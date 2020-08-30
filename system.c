@@ -58,8 +58,8 @@ reset_system (void)
 }
 
 Frame *
-new_frame (int t, int s, int rt, int rs,
-           int a, int pc)
+make_frame (int t, int s, int rt, int rs,
+	    int a, int pc)
 {
   Frame *object;
 
@@ -78,7 +78,7 @@ new_frame (int t, int s, int rt, int rs,
 }
 
 void
-delete_frame (Frame *object)
+unmake_frame (Frame *object)
 {
   free ((char *) object);
 }
@@ -111,7 +111,7 @@ void
 clear_frames (void)
 {
   while (sys.task.frames != NULL)
-    delete_frame (pop_frame ());
+    unmake_frame (pop_frame ());
 }
 
 Cell

@@ -95,8 +95,8 @@ extern jmp_buf jmpbuf;
 extern System sys;
 
 void reset_system (void);
-Frame * new_frame (int, int, int, int, int, int);
-void delete_frame (Frame *);
+Frame * make_frame (int, int, int, int, int, int);
+void unmake_frame (Frame *);
 void push_frame (Frame *);
 Frame *pop_frame (void);
 void clear_frames (void);

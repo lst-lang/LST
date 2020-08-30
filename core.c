@@ -116,13 +116,6 @@ is_delimiter (Character c, Character d)
   return ((c == d) || (isspace (c) && d == ' '));
 }
 
-static int
-make_name (char *name, Cell b)
-{
-  sprintf (name, "b%05u.blk", (unsigned) (b / 100));
-  return b % 100;
-}
-
 Cell
 macro_emit_slot (Cell opcode)
 {
@@ -169,7 +162,7 @@ macro_define (Cell c_addr, Cell u)
 
       in = macro_skip_delimiters (' ');
       count = macro_find_delimiter (' ');
-      return word_begin ((Character *)A (in), count);
+      return word_begin ((Character *) A (in), count);
     }
   else
     {
@@ -195,7 +188,7 @@ Cell
 macro_accept (Cell c_addr, Cell u)
 {
   Character c, *string;
-  int length;
+  Cell length;
 
   fflush (stdout);
   string = (Character *) A (c_addr);
@@ -360,9 +353,10 @@ Cell
 macro_fetch_block (Cell b, Cell u)
 {
   FILE *f;
-  char name[128];
+  char name[32];
 
-  b = make_name (name, b);
+  sprintf (name, "b%05u.blk", (unsigned) (b / 100));
+  b %= 100;
   f = fopen (name, "r");
   if (f == NULL)
     {
@@ -394,9 +388,10 @@ Cell
 macro_store_block (Cell b, Cell u)
 {
   FILE *f;
-  char name[128];
+  char name[32];
 
-  b = make_name (name, b);
+  sprintf (name, "b%05u.blk", (unsigned) (b / 100));
+  b %= 100;
   f = fopen (name, "r+");
   if (f == NULL)
     {
@@ -546,7 +541,7 @@ macro_dump (Cell addr, Cell u)
   int *word, *end;
 
   printf ("\n%-10s%-16s%-12s%-24s%-12s\n",
-          "Address", "Bytecodes", "Integer", "Address", "Characters");
+          "ADDRESS", "BYTECODES", "INTEGER", "ADDRESS", "CHARACTERS");
   word = (int *) A (addr);
   end = (int *) ((char *) word + u);
   while (word < end)

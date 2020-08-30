@@ -24,6 +24,7 @@
 #include "execute.h"
 #include "macro.h"
 #include "core.h"
+#include "file.h"
 
 #define O(m)								\
   MEMBER_OFFSET (System, task) + MEMBER_OFFSET (Terminal_Task, m)
@@ -111,7 +112,7 @@ read_line (Character *output, Cell size, FILE *f)
   Character c;
 
   c = 0;
-  for (i = 0; i < 64; i++)
+  for (i = 0; i < 128; i++)
     {
       c = fgetc (f);
       if (feof (f))
@@ -138,9 +139,9 @@ accept_input (Cell c_addr, Cell u)
     {
       if (bootstrap_file == NULL)
 	{
-	  bootstrap_file = fopen ("bootstrp.blk", "r");
+	  bootstrap_file = fopen ("bootstrp.fs", "r");
 	  if (bootstrap_file == NULL)
-	    fatal_error ("BOOTSTRP.BLK NOT FOUND");
+	    fatal_error ("BOOTSTRP.FS NOT FOUND");
 	}
       u = read_line (output, u, bootstrap_file);
       if (u == -1)
@@ -411,6 +412,7 @@ bootstrap (void)
 {
   reset_system ();
   register_core_macros ();
+  register_file_macros ();
   register_macro ("POSTPONE,", (Function) postpone, 0);
   register_macro ("NUMBER,", (Function) emit_number, 0);
   register_macro ("ACCEPT-INPUT", (Function) accept_input, 2);

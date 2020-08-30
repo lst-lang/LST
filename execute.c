@@ -121,7 +121,7 @@ execute (Cell pc)
 	  t = top->t, s = top->s;
 	  rt = top->rt, rs = top->rs;
 	  pc = top->pc;
-	  delete_frame (top);
+	  unmake_frame (top);
 	}
     }
  next:
@@ -451,7 +451,7 @@ execute (Cell pc)
 	    {
 	      Frame *top;
 
-	      top = new_frame (t, s, rt, rs, a, pc);
+	      top = make_frame (t, s, rt, rs, a, pc);
 	      push_frame (top);
 	    }
 	    pc = t;
