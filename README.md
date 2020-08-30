@@ -20,7 +20,7 @@ The implementation would consist of four basic components:
 ## Statements
 * Assignment: `a := 1`, `b := 3.0`
 * Conditional: `if a>b then a else b`
-* Compound: `prog a:=1; b:=3.0; if a>b then a else b end`
+* Compound: `prog a:=1; b:=3.0 end`
 * Block (Compound with local variables): `prog vars a b c; ... end`
 * Return (in Compound or Block): `return <result>`
 * Goto: `prog label: a:=1; go label end`
@@ -41,7 +41,7 @@ and back without losing data.
 fun max a b;
    decl int a,b,max end;
 prog vars temp;
-   decl int temp;
+   decl int temp end;
    if a>b then temp:=a else temp:=b;
    return t;
 end
@@ -52,7 +52,7 @@ end
 data rect = length * width;
    decl int length,width end;
 data circle = * radius;
-   decl int radius;
+   decl int radius end;
 data shape = srect | scircle;
    decl rect srect; circle scircle end;
 
@@ -60,7 +60,7 @@ fun areaofrect r;
    length(r) * width(r);
    
 fun areaofcircle c;
-   radius(c) * radius(c) * 3.14
+   radius(c) * radius(c) * 3.14;
 
 fun areaofshape s;
    decl shape s; int areaofshape end;
