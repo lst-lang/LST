@@ -60,7 +60,8 @@ macro_fptrs (Cell u)
 Cell
 macro_fopen (Cell c_addr, Cell u, Cell fam, Cell fp)
 {
-  static char *fam_to_mode[3] = { "r", "r+", "w" };
+  static char *fam_to_mode[6] =
+    { "r", "r+", "w", "rb", "rb+", "wb" };
   char *name;
   FILE *f;
 
@@ -112,7 +113,7 @@ macro_fread (Cell c_addr, Cell u, Cell fp)
   f = *(FILE **) A (fp);
   string = (Character *) A (c_addr);
   result = fread ((char *) string, sizeof (Character), u, f);
-  return result;
+  return result / sizeof (Character);
 }
 
 Cell
@@ -125,7 +126,7 @@ macro_fwrite (Cell c_addr, Cell u, Cell fp)
   f = *(FILE **) A (fp);
   string = (Character *) A (c_addr);
   result = fwrite ((char *) string, sizeof (Character), u, f);
-  return result;
+  return result / sizeof (Character);
 }
 
 Cell
@@ -135,7 +136,13 @@ macro_feof (Cell fp)
 }
 
 Cell
-macro_fseek (Cell offset, Cell from, Cell fp)
+macro_ferror (Cell fp)
+{
+  return ferror(*(FILE **) A (fp));
+}
+
+Cell
+macro_fseek (Cell offset, Cell fp, Cell from)
 {
   return fseek (*(FILE **) A (fp),
 		offset * sizeof (Character), from);
@@ -157,6 +164,7 @@ register_file_macros (void)
   register_macro ("FREAD", (Function) macro_fread, 3);
   register_macro ("FWRITE", (Function) macro_fwrite, 3);
   register_macro ("FEOF", (Function) macro_feof, 1);
+  register_macro ("FERROR", (Function) macro_ferror, 1);
   register_macro ("FSEEK", (Function) macro_fseek, 3);
   register_macro ("FTELL", (Function) macro_ftell, 1);
 }

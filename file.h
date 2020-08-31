@@ -22,6 +22,7 @@ Cell macro_fremove (Cell, Cell);
 Cell macro_fread (Cell, Cell, Cell);
 Cell macro_fwrite (Cell, Cell, Cell);
 Cell macro_feof (Cell);
+Cell macro_ferror (Cell);
 Cell macro_fseek (Cell, Cell, Cell);
 Cell macro_ftell (Cell);
 void register_file_macros (void);

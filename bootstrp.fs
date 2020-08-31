@@ -486,11 +486,12 @@ updated-buffers 4 cells erase
 
 0 macro fptrs 0 macro fopen 0 macro fclose
 0 macro fremove 0 macro fread 0 macro fwrite
-0 macro feof 0 macro fseek 0 macro ftell
+0 macro feof 0 macro ferror 0 macro fseek 0 macro ftell
 8 fptrs allot constant files
 8 cells allot constant file-flags
 file-flags a! 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !a
 0 constant r/o 1 constant r/w 2 constant w/o
+: bin 3 + ;
 : find-unused file-flags a!
    8 for @+ 0= if 8 r> - exit then next -1 ;
 : id>file fptrs files + ;
@@ -502,3 +503,19 @@ file-flags a! 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !a
 : close-file dup ?bad-id if drop 0 exit then
    dup id>flag dup >r @ if 0 r> ! id>file fclose exit then
    r> 2drop 0 ;
+: empty-file w/o open-file 0= if close-file then drop ;
+: create-file >r 2dup empty-file r> open-file ;
+: delete-file fremove ;
+: file-position dup ?bad-id if -1 exit then
+   id>file ftell dup -1 = ;
+: reposition-file dup ?bad-id if drop -1 exit then
+   id>file 0 fseek ;
+: [file-size] 0 over id>file 2 fseek 0=
+   if file-position exit then drop -1 ;
+: file-size dup file-position if drop -1 then
+   over [file-size] >r >r swap reposition-file
+   >r or >r swap ;
+: read-file dup ?bad-id if 2drop -1 exit then
+   id>file dup >r fread r> ferror 0= 0= ;
+: write-file dup ?bad-id if 2drop -1 exit then
+   id>file dup >r fwrite r> ferror 0= 0= ;
