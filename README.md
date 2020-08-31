@@ -31,6 +31,7 @@ The implementation would consist of four basic components:
 * Structure/Record with two members: `data rect = length * width`
 * Structure/Record with a single member: `data circle = * radius`
 * Union: `data shape = srect | scircle`
+* Function/Procedure: `data filter = lambda x`
 
 ## Declaration
 A declaration statement specifies the type of variables and functions.
@@ -43,7 +44,7 @@ fun max a b;
 prog vars temp;
    decl int temp end;
    if a>b then temp:=a else temp:=b;
-   return t;
+   return temp;
 end
 ```
 
@@ -76,7 +77,7 @@ fun main;
    decl void main end;
 prog vars arrayofshapes c;
    decl [] ref shape arrayofshapes; circle c end;
-   arrayofshapes := makearray(ref(shape), 1);
+   arrayofshapes := makearray(1, ref shape);
    arrayofshapes[0] := make(shape);
    radius(c) := 10;
    deref(arrayofshapes[0]) := c;
@@ -111,7 +112,7 @@ translate to s-expressions:
    (DECLARE (VOID LAMBDA))
 (PROG (ARRAYOFSHAPES C)
    (DECLARE ((ARRAY (REFERENCE SHAPE)) ARRAYOFSHAPES) (CIRCLE C))
-   (SETQ ARRAYOFSHAPES (MAKEARRAY (REFERENCE SHAPE) 1))
+   (SETQ ARRAYOFSHAPES (MAKEARRAY 1 (REFERENCE SHAPE)))
    (SETQ (ARRAYOFSHAPES 0) (MAKE SHAPE))
    (SETQ (RADIUS C) 10)
    (SETQ (DEREFERENCE (ARRAYOFSHAPES 0)) C)
