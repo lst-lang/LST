@@ -144,8 +144,10 @@ macro_ferror (Cell fp)
 Cell
 macro_fseek (Cell offset, Cell fp, Cell from)
 {
-  return fseek (*(FILE **) A (fp),
-		offset * sizeof (Character), from);
+  return (fseek (*(FILE **) A (fp),
+		offset * sizeof (Character), from)
+	  / sizeof (Character));
+		
 }
 
 Cell
