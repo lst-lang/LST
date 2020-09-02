@@ -27,13 +27,13 @@
 #include "optional.h"
 
 static char *
-malloc_not_fail (Cell u)
+malloc_never_fails (Cell u)
 {
   char *p;
 
   p = malloc (sizeof (char) * u);
   if (p == NULL)
-    THROW (-59);
+    fatal_error ("MALLOC FAILED");
   return p;
 }
 
@@ -45,7 +45,7 @@ make_c_string (Cell c_addr, Cell u)
   char *name;
 
   string = (Character *) A (c_addr);
-  name = malloc_not_fail (sizeof (char) * (u + 1));
+  name = malloc_never_fails (sizeof (char) * (u + 1));
   for (i = 0; i < u; i++)
     name[i] = string[i];
   name[i] = 0;
