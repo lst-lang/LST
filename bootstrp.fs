@@ -424,7 +424,6 @@ variable created 0 created !
    2dup s" RETURN-STACK-CELLS" compare 0=
    if 2drop 32 true exit then
    s" STACK-CELLS" compare 0= if 32 true exit then false ;
-: .s ?interp if [ dot-s, ] exit then dot-s, ; immediate
 : macro parse-name begin,
    82 over entry-name + slot-instruction, drop
    fill-nop, swap if drop, then ret, end, ;
@@ -485,7 +484,6 @@ updated-buffers 4 cells erase
 : bye [ HALT, ] ;
 
 \ optional file wordset.
-
 0 macro fptrs 0 macro fopen 0 macro fclose
 0 macro fremove 0 macro fread 0 macro fwrite
 0 macro feof 0 macro ferror 0 macro fseek 0 macro ftell
@@ -566,3 +564,8 @@ variable strbuf-pointer string-buffer1 strbuf-pointer !
 : file-s" " 128 min dup >r next-strbuf
    cell+ dup >r swap cmove r> r> ;
 : s" ?interp if file-s" exit then postpone s" ; immediate
+
+\ optional tools wordset.
+1 macro dump 1 macro see 1 macro words
+: .s ?interp if [ dot-s, ] exit then dot-s, ; immediate
+: ? @ . ;

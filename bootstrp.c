@@ -229,11 +229,6 @@ define_words (void)
   define_macro_word ("DISPLAY-SYSERR", 1);
   define_macro_word ("ALIGN-NUMBER", 0);
   define_macro_word ("KEY", 0);
-  define_macro_word ("DUMP", 1);
-  define_macro_word ("SEE", 1);
-  define_macro_word ("WORDS", 1);
-  define_macro_word ("INT.", 1);
-  define_macro_word ("LONG.", 1);
 				  
   define_code_word ("HALT,", OP_HALT);
   define_code_word ("NOP,", OP_NOP);
