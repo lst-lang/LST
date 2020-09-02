@@ -23,7 +23,7 @@
 #include "system.h"
 #include "macro.h"
 #include "execute.h"
-#include "file.h"
+#include "optional.h"
 
 static char *
 malloc_not_fail (Cell u)

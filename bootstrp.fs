@@ -489,14 +489,20 @@ updated-buffers 4 cells erase
 0 macro fptrs 0 macro fopen 0 macro fclose
 0 macro fremove 0 macro fread 0 macro fwrite
 0 macro feof 0 macro ferror 0 macro fseek 0 macro ftell
-8 fptrs allot constant files
-8 cells allot constant file-flags
-file-flags a! 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !a
+8 fptrs allot 1 fptrs - constant files
+8 cells allot dup 1 cells - constant file-flags
+a! 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !a
 0 constant r/o 1 constant r/w 2 constant w/o
 variable line-term 10 line-term c!
+variable [source-id] 0 [source-id] !
+variable string-buffer1 128 chars allot drop
+variable string-buffer2 128 chars allot drop
+string-buffer1 string-buffer2 !
+string-buffer2 string-buffer1 !
+variable strbuf-pointer string-buffer1 strbuf-pointer !
 : bin 3 + ;
-: find-unused file-flags a!
-   8 for @+ 0= if 8 r> - exit then next -1 ;
+: find-unused file-flags 1 cells + a!
+   8 for @+ 0= if 9 r> - exit then next -1 ;
 : id>file fptrs files + ;
 : id>flag cells file-flags + ;
 : open-file find-unused dup -1 =
@@ -532,3 +538,32 @@ variable line-term 10 line-term c!
    if r> ferror 0= 0= exit then -1 r> drop ;
 : write-line dup >r write-file dup 0=
    if drop line-term 1 r> write-file exit then r> drop ;
+: source-id [source-id] @ ;
+: evaluate source-id >r -1 [source-id] !
+   evaluate r> [source-id] ! ;
+: read-input tib /tib 2 - source-id read-line ;
+: check-io-exception 0= 0= if -37 [ throw, ] then ;
+: ?eof check-io-exception 0= ;
+: ?incomplete-line dup /tib 2 - = ;
+: line-too-long true abort" INPUT LINE TOO LONG!" ;
+: ?more-input read-input ?eof if drop false exit then
+   ?incomplete-line if line-too-long then true ;
+: finterpret begin true while
+   ?more-input 0= if exit then
+   #input ! 0 >in ! interpret repeat ;
+: include-file source-id >r save-inputs
+   [source-id] ! tib input ! 0 #input ! 0 >in ! 0 blk !
+   finterpret restore-inputs r> [source-id] ! ;
+: included r/o open-file check-io-exception
+   dup >r include-file r> close-file check-io-exception ;
+: file( begin true while ')' find-delimiter drop
+   >in @ #input @ < if incin exit then
+   ?more-input 0= if exit then #input ! 0 >in ! repeat ;
+: ( source-id 0 > if file( exit then postpone ( ; immediate
+: next-strbuf strbuf-pointer @ @ dup strbuf-pointer ! ;
+: s" ?interp if -14 [ throw, ] then "
+   dup >r static-allot r@ over >r cmove
+   r> postpone literal r> postpone literal ; immediate
+: file-s" " 128 min dup >r next-strbuf cell+ dup >r
+   swap cmove r> r> ;
+: s" ?interp if file-s" exit then postpone s" ; immediate

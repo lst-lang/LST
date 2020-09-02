@@ -24,7 +24,7 @@
 #include "execute.h"
 #include "macro.h"
 #include "core.h"
-#include "file.h"
+#include "optional.h"
 
 #define O(m)								\
   MEMBER_OFFSET (System, task) + MEMBER_OFFSET (Terminal_Task, m)
