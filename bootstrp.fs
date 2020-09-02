@@ -484,6 +484,8 @@ updated-buffers 4 cells erase
    2dup < if 2drop r> 2drop false exit then [search] ;
 : bye [ HALT, ] ;
 
+\ optional file wordset.
+
 0 macro fptrs 0 macro fopen 0 macro fclose
 0 macro fremove 0 macro fread 0 macro fwrite
 0 macro feof 0 macro ferror 0 macro fseek 0 macro ftell
@@ -491,6 +493,7 @@ updated-buffers 4 cells erase
 8 cells allot constant file-flags
 file-flags a! 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !a
 0 constant r/o 1 constant r/w 2 constant w/o
+variable line-term 10 line-term c!
 : bin 3 + ;
 : find-unused file-flags a!
    8 for @+ 0= if 8 r> - exit then next -1 ;
@@ -513,9 +516,19 @@ file-flags a! 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !a
 : [file-size] 0 over id>file 2 fseek 0=
    if file-position exit then drop -1 ;
 : file-size dup file-position if drop -1 then
-   over [file-size] >r >r swap reposition-file
-   >r or >r swap ;
+   over [file-size] >r >r swap reposition-file r> or r> ;
 : read-file dup ?bad-id if 2drop -1 exit then
    id>file dup >r fread r> ferror 0= 0= ;
+: read-char 1 swap read-file swap 1 = 0= or ;
+: maybe-error swap >r >r drop r> true r> id>file ferror ;
+: read-line dup file-position >r over file-size >r
+   = r> r> or or if 2drop drop 0 false 0 exit then
+   over >r swap for 2dup read-char
+   if r> r> swap - maybe-error exit then
+   over c@ 10 = if 2drop r> r> swap - true 0 exit then
+   swap char+ swap next 2drop r> true 0 ;
 : write-file dup ?bad-id if 2drop -1 exit then
-   id>file dup >r fwrite r> ferror 0= 0= ;
+   id>file dup >r over >r fwrite r> =
+   if r> ferror 0= 0= exit then -1 r> drop ;
+: write-line dup >r write-file dup 0=
+   if drop line-term 1 r> write-file exit then r> drop ;
