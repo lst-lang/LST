@@ -548,8 +548,7 @@ variable strbuf-pointer string-buffer1 strbuf-pointer !
 : line-too-long true abort" INPUT LINE TOO LONG!" ;
 : ?more-input read-input ?eof if drop false exit then
    ?incomplete-line if line-too-long then true ;
-: finterpret begin true while
-   ?more-input 0= if exit then
+: finterpret begin true while ?more-input 0= if exit then
    #input ! 0 >in ! interpret repeat ;
 : include-file source-id >r save-inputs
    [source-id] ! tib input ! 0 #input ! 0 >in ! 0 blk !
@@ -564,6 +563,6 @@ variable strbuf-pointer string-buffer1 strbuf-pointer !
 : s" ?interp if -14 [ throw, ] then "
    dup >r static-allot r@ over >r cmove
    r> postpone literal r> postpone literal ; immediate
-: file-s" " 128 min dup >r next-strbuf cell+ dup >r
-   swap cmove r> r> ;
+: file-s" " 128 min dup >r next-strbuf
+   cell+ dup >r swap cmove r> r> ;
 : s" ?interp if file-s" exit then postpone s" ; immediate
