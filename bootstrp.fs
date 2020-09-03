@@ -483,7 +483,7 @@ updated-buffers 4 cells erase
    2dup < if 2drop r> 2drop false exit then [search] ;
 : bye [ HALT, ] ;
 
-\ optional file wordset.
+\ optional file word set.
 0 macro fptrs 0 macro fopen 0 macro fclose
 0 macro fremove 0 macro fread 0 macro fwrite
 0 macro feof 0 macro ferror 0 macro fseek 0 macro ftell
@@ -565,7 +565,48 @@ variable strbuf-pointer string-buffer1 strbuf-pointer !
    cell+ dup >r swap cmove r> r> ;
 : s" ?interp if file-s" exit then postpone s" ; immediate
 
-\ optional tools wordset.
+\ optional floating-point word set.
+0 macro [f!] 0 macro [f*] 0 macro [f+] 0 macro [f-]
+0 macro [f/] 0 macro [f<] 0 macro [f/] 0 macro floats
+0 macro [floor] 0 macro [fnegate] 0 macro [frot]
+0 macro [fround] 0 macro [fswap] 0 macro [f0<]
+0 macro [f0=] 0 macro [ud>f] 0 macro [float.]
+variable fsp 32 floats allot constant fstack
+-1 fsp !
+: one-more-float fsp @ 1+ dup 31 > if -3 [ throw, ] then
+   dup fsp ! floats fstack + ;
+: fdrop fsp @ dup 0< if -4 [ throw, ] then 1- fsp ! ;
+: @float fsp @ dup 0< if -4 [ throw, ] then floats fstack + ;
+: f! @float swap [f!] drop ;
+: f@ one-more-float [f!] drop ;
+: fbinary @float fdrop @float ;
+: f* fbinary [f*] drop ;
+: f+ fbinary [f+] drop ;
+: f- fbinary [f-] drop ;
+: f/ fbinary [f/] drop ;
+: f< fbinary swap [f<] fdrop ;
+: floor @float [floor] fdrop ;
+: fround @float [fround] drop ;
+: fnegate @float [fnegate] drop ;
+: ud>f one-more-float [ud>f] drop ;
+: d>f dup 0< if dnegate ud>f fnegate exit then ud>f ;
+: fdup @float one-more-float [f!] drop ;
+: fover @float 1 floats - dup fstack <
+   if -4 [ throw, ] then one-more-float [f!] drop ;
+: fdepth fsp @ 1+ ;
+: float+ 1 floats + ;
+: fswap fsp @ 1 < if -4 [ throw, ] then @float [fswap] drop ;
+: frot fsp @ 2 < if -4 [ throw, ] then @float [frot] drop ;
+: uf>d fdup 0 1 d>f f< if floor exit then
+   fdup 0 1 d>f fover fover f/ f* f- floor 0 1 d>f f/ floor ;
+: f0< @float [f0<] fdrop ;
+: f0= @float [f0=] fdrop ;
+: f>d fdup f0< if fnegate uf>d dnegate exit then uf>d ;
+: fmin fover fover f< 0= if fswap then fdrop ;
+: fmax fover fover f< if fswap then fdrop ;
+: float. @float [float.] drop fdrop ;
+
+\ optional tools word set.
 1 macro dump 1 macro see 1 macro words
 : .s ?interp if [ dot-s, ] exit then dot-s, ; immediate
 : ? @ . ;

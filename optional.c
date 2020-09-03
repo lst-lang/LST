@@ -26,6 +26,8 @@
 #include "core.h"
 #include "optional.h"
 
+typedef float Floating;
+
 static char *
 malloc_never_fails (Cell u)
 {
@@ -158,6 +160,128 @@ macro_ftell (Cell fp)
 }
 
 Cell
+macro_f_store (Cell r, Cell f_addr)
+{
+  return (Cell) (*(Floating *) A (f_addr) = *(Floating *) A (r));
+}
+
+Cell
+macro_f_star (Cell r1, Cell r2)
+{
+  return (Cell ) (*(Floating *) A (r2) *= *(Floating *) A (r1));
+}
+
+Cell
+macro_f_plus (Cell r1, Cell r2)
+{
+  return (Cell ) (*(Floating *) A (r2) += *(Floating *) A (r1));
+}
+
+Cell
+macro_f_minus (Cell r1, Cell r2)
+{
+  return (Cell ) (*(Floating *) A (r2) -= *(Floating *) A (r1));
+}
+
+Cell
+macro_f_slash (Cell r1, Cell r2)
+{
+  return (Cell ) (*(Floating *) A (r2) /= *(Floating *) A (r1));
+}
+
+Cell
+macro_f_less_than (Cell r1, Cell r2)
+{
+  return (*(Floating *) A (r1) < *(Floating *) A (r2)) ? -1 : 0;
+}
+
+Cell
+macro_floats (Cell n)
+{
+  return n * sizeof (Floating);
+}
+
+Cell
+macro_floor (Cell r)
+{
+  Cell n;
+
+  n = (Cell) (*(Floating *) A (r));
+  (*(Floating *) A (r)) = (Floating) n;
+  return n;
+}
+
+Cell
+macro_fnegate (Cell r)
+{
+  return (Cell) ((*(Floating *) A (r)) = -(*(Floating *) A (r)));
+}
+
+Cell
+macro_frot (Cell r)
+{
+  Floating *r1, *r2, *r3, t;
+
+  r3 = (Floating *) A (r);
+  r2 = r3 - 1;
+  r1 = r2 - 1;
+  t = *r3;
+  *r3 = *r1;
+  *r1 = *r2;
+  return (Cell) (*r2 = t);
+}
+
+Cell
+macro_fround (Cell r)
+{
+  Cell n;
+  Floating x;
+
+  x = (*(Floating *) A (r));
+  n = (x < 0.0) ? (Cell) (x - 0.5) : (Cell) (x + 0.5);
+  (*(Floating *) A (r)) = (Floating) n;
+  return n;
+}
+
+Cell
+macro_fswap (Cell r)
+{
+  Floating *r1, *r2, t;
+
+  r2 = (Floating *) A (r);
+  r1 = r2 - 1;
+  t = *r2;
+  *r2 = *r1;
+  return (Cell) (*r1 = t);
+}
+
+Cell
+macro_f_zero_less_than (Cell r)
+{
+  return (*(Floating *) A (r) < 0) ? -1 : 0;
+}
+
+Cell
+macro_f_zero_equals (Cell r)
+{
+  return (*(Floating *) A (r) == 0) ? -1 : 0;
+}
+
+Cell
+macro_ud_to_f (Cell l, Cell h, Cell r)
+{
+  static Unsigned_Cell zero = 0;
+  Floating x, fh, fl, fz;
+
+  fh = (Unsigned_Cell) h;
+  fl = (Unsigned_Cell) l;
+  fz = (Unsigned_Cell) (~zero);
+  x = fh * fz + fl;
+  (*(Floating *) A (r)) = x;
+  return (Cell) x;
+}
+
+Cell
 macro_dump (Cell addr, Cell u)
 {
   unsigned int i, j;
@@ -279,8 +403,7 @@ Cell
 macro_int_dot (Cell n)
 {
   printf ("%d:%u ", (int) n, (unsigned) n);
-  fflush (stdout);
-  return 0;
+  return fflush (stdout);
 }
 
 Cell
@@ -292,8 +415,13 @@ macro_long_dot (Cell low, Cell high)
   d <<= sizeof (int) * 8;
   d |= (unsigned) low;
   printf ("%ld:%lu ", d, d);
-  fflush (stdout);
-  return 0;
+  return fflush (stdout);
+}
+
+Cell
+macro_float_dot (Cell r)
+{
+  return printf ("%f ", (*(Floating *) A (r)));
 }
 
 void
@@ -309,10 +437,26 @@ register_file_macros (void)
   register_macro ("FERROR", (Function) macro_ferror, 1);
   register_macro ("FSEEK", (Function) macro_fseek, 3);
   register_macro ("FTELL", (Function) macro_ftell, 1);
+  register_macro ("[F!]", (Function) macro_f_store, 2);
+  register_macro ("[F*]", (Function) macro_f_star, 2);
+  register_macro ("[F+]", (Function) macro_f_plus, 2);
+  register_macro ("[F-]", (Function) macro_f_minus, 2);
+  register_macro ("[F/]", (Function) macro_f_slash, 2);
+  register_macro ("[F<]", (Function) macro_f_less_than, 2);
+  register_macro ("FLOATS", (Function) macro_floats, 1);
+  register_macro ("[FLOOR]", (Function) macro_floor, 1);
+  register_macro ("[FNEGATE]", (Function) macro_fnegate, 1);
+  register_macro ("[FROT]", (Function) macro_frot, 1);
+  register_macro ("[FROUND]", (Function) macro_fround, 1);
+  register_macro ("[FSWAP]", (Function) macro_fswap, 1);
+  register_macro ("[F0<]", (Function) macro_f_zero_less_than, 1);
+  register_macro ("[F0=]", (Function) macro_f_zero_equals, 1);
+  register_macro ("[UD>F]", (Function) macro_ud_to_f, 3);
   register_macro ("KEY", (Function) macro_key, 0);
   register_macro ("DUMP", (Function) macro_dump, 2);
   register_macro ("SEE", (Function) macro_see, 0);
   register_macro ("WORDS", (Function) macro_words, 0);
   register_macro ("INT.", (Function) macro_int_dot, 1);
   register_macro ("LONG.", (Function) macro_long_dot, 2);
+  register_macro ("[FLOAT.]", (Function) macro_float_dot, 1);
 }
