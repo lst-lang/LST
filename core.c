@@ -117,37 +117,37 @@ is_delimiter (Character c, Character d)
 }
 
 Cell
-macro_emit_slot (Cell opcode)
+macro_emit_instruction_slot (Cell opcode)
 {
-  emit_slot (opcode);
+  emit_instruction_slot (opcode);
   return opcode;
 }
 
 Cell
-macro_emit_instruction (Cell instruction)
+macro_emit_instruction_word (Cell instruction)
 {
-  emit_instruction (instruction);
+  emit_instruction_word (instruction);
   return instruction;
 }
 
 Cell
-macro_fill_instruction (Cell opcode)
+macro_fill_instruction_word (Cell opcode)
 {
-  fill_instruction (opcode);
+  fill_instruction_word (opcode);
   return opcode;
 }
 
 Cell
 macro_tail_recurse (void)
 {
-  emit_slot_with_instruction (OP_JMP, sys.task.recursive);
+  emit_instruction_slot_and_word (OP_JMP, sys.task.recursive);
   return sys.task.vocabulary;
 }
 
 Cell
 macro_recurse (void)
 {
-  emit_slot_with_instruction (OP_CALL, sys.task.recursive);
+  emit_instruction_slot_and_word (OP_CALL, sys.task.recursive);
   return sys.task.vocabulary;
 }
 
@@ -173,7 +173,7 @@ macro_define (Cell c_addr, Cell u)
 Cell
 macro_end_define (Cell offset)
 {
-  emit_slot (OP_HALT);
+  emit_instruction_slot (OP_HALT);
   word_end (offset);
   return offset;
 }
@@ -331,7 +331,7 @@ macro_immediate (void)
 Cell
 macro_literal (Cell number)
 {
-  emit_slot_with_instruction (OP_LIT, number);
+  emit_instruction_slot_and_word (OP_LIT, number);
   return number;
 }
 
@@ -539,11 +539,11 @@ register_core_macros (void)
 {
   register_macro ("ALLOT", (Function) allocate, 1);
   register_macro ("STATIC-ALLOT", (Function) static_allocate, 1);
-  register_macro ("SLOT,", (Function) macro_emit_slot, 1);
-  register_macro ("INSTRUCTION,", (Function) macro_emit_instruction, 1);
+  register_macro ("SLOT,", (Function) macro_emit_instruction_slot, 1);
+  register_macro ("INSTRUCTION,", (Function) macro_emit_instruction_word, 1);
   register_macro ("SLOT-INSTRUCTION,",
-		  (Function) emit_slot_with_instruction, 2);
-  register_macro ("FILL,", (Function) macro_fill_instruction, 1);
+		  (Function) emit_instruction_slot_and_word, 2);
+  register_macro ("FILL,", (Function) macro_fill_instruction_word, 1);
   register_macro ("TAIL-RECURSE,", (Function) macro_tail_recurse, 0);
   register_macro ("BEGIN,", (Function) macro_define, 2);
   register_macro ("END,", (Function) macro_end_define, 1);

@@ -70,8 +70,8 @@ _emit_call (Character *name, Cell size)
       Entry *e;
 
       e = (Entry *) A (entry_offset);
-      emit_slot_with_instruction (OP_CALL, e->code_pointer);
-      fill_instruction (OP_NOP);
+      emit_instruction_slot_and_word (OP_CALL, e->code_pointer);
+      fill_instruction_word (OP_NOP);
     }
 }
 
@@ -90,7 +90,7 @@ emit_number (void)
   Cell number;
 
   number = macro_number ();
-  emit_slot_with_instruction (OP_LIT, number);
+  emit_instruction_slot_and_word (OP_LIT, number);
   return number;
 }
 
@@ -169,27 +169,27 @@ define_macro_word (char *macro_name, Cell drop_result)
 
   define (macro_name);
   name = sys.task.vocabulary + MEMBER_OFFSET (Entry, name);
-  emit_slot_with_instruction (OP_MACRO, name);
+  emit_instruction_slot_and_word (OP_MACRO, name);
   if (drop_result)
-    emit_slot (OP_DROP);
-  emit_slot (OP_RET);
+    emit_instruction_slot (OP_DROP);
+  emit_instruction_slot (OP_RET);
 }
 
 static void
-define_code_word (char *name, Opcode code)
+define_opcode_word (char *name, Opcode code)
 {
   define (name);
-  emit_slot_with_instruction (OP_LIT, code);
+  emit_instruction_slot_and_word (OP_LIT, code);
   emit_call ("SLOT,");
-  emit_slot (OP_RET);
+  emit_instruction_slot (OP_RET);
 }
 
 static void
 define_constant_word (char *name, Cell value)
 {
   define (name);
-  emit_slot_with_instruction (OP_LIT, value);
-  emit_slot (OP_RET);
+  emit_instruction_slot_and_word (OP_LIT, value);
+  emit_instruction_slot (OP_RET);
 }
 
 static void
@@ -230,92 +230,94 @@ define_words (void)
   define_macro_word ("ALIGN-NUMBER", 0);
   define_macro_word ("KEY", 0);
 				  
-  define_code_word ("HALT,", OP_HALT);
-  define_code_word ("NOP,", OP_NOP);
-  define_code_word ("DUP,", OP_DUP);
-  define_code_word ("SWAP,", OP_SWAP);
-  define_code_word ("DROP,", OP_DROP);
-  define_code_word ("OVER,", OP_OVER);
-  define_code_word ("ROT,", OP_ROT);
-  define_code_word ("MINUS-ROT,", OP_MINUS_ROT);
-  define_code_word ("NIP,", OP_NIP);
-  define_code_word ("TUCK,", OP_TUCK);
-  define_code_word ("ROT-DROP,", OP_ROT_DROP);
-  define_code_word ("ROT-DROP-SWAP,", OP_ROT_DROP_SWAP);
-  define_code_word ("PLUS,", OP_PLUS);
-  define_code_word ("MINUS,", OP_MINUS);
-  define_code_word ("STAR,", OP_STAR);
-  define_code_word ("SLASH,", OP_SLASH);
-  define_code_word ("U-PLUS,", OP_U_PLUS);
-  define_code_word ("U-MINUS,", OP_U_MINUS);
-  define_code_word ("U-STAR,", OP_U_STAR);
-  define_code_word ("U-SLASH,", OP_U_SLASH);
-  define_code_word ("ONE-PLUS,", OP_ONE_PLUS);
-  define_code_word ("ONE-MINUS,", OP_ONE_MINUS);
-  define_code_word ("INVERT,", OP_INVERT);
-  define_code_word ("AND,", OP_AND);
-  define_code_word ("OR,", OP_OR);
-  define_code_word ("XOR,", OP_XOR);
-  define_code_word ("TWO-STAR,", OP_TWO_STAR);
-  define_code_word ("U-TWO-SLASH,", OP_U_TWO_SLASH);
-  define_code_word ("TWO-SLASH,", OP_TWO_SLASH);
-  define_code_word ("R-SHIFT,", OP_R_SHIFT);
-  define_code_word ("L-SHIFT,", OP_L_SHIFT);
-  define_code_word ("TRUE,", OP_TRUE);
-  define_code_word ("FALSE,", OP_FALSE);
-  define_code_word ("ZERO-EQUALS,", OP_ZERO_EQUALS);
-  define_code_word ("ZERO-LESS,", OP_ZERO_LESS);
-  define_code_word ("U-GREATER-THAN,", OP_U_GREATER_THAN);
-  define_code_word ("U-LESS-THAN,", OP_U_LESS_THAN);
-  define_code_word ("EQUALS,", OP_EQUALS);
-  define_code_word ("U-GREATER-EQUALS,", OP_U_GREATER_EQUALS);
-  define_code_word ("U-LESS-EQUALS,", OP_U_LESS_EQUALS);
-  define_code_word ("NOT-EQUALS,", OP_NOT_EQUALS);
-  define_code_word ("GREATER-THAN,", OP_GREATER_THAN);
-  define_code_word ("LESS-THAN,", OP_LESS_THAN);
-  define_code_word ("GREATER-EQUALS,", OP_GREATER_EQUALS);
-  define_code_word ("LESS-EQUALS,", OP_LESS_EQUALS);
-  define_code_word ("TO-R,", OP_TO_R);
-  define_code_word ("R-FROM,", OP_R_FROM);
-  define_code_word ("R-FETCH,", OP_R_FETCH);
-  define_code_word ("R-FROM-DROP,", OP_R_FROM_DROP);
-  define_code_word ("FETCH,", OP_FETCH);
-  define_code_word ("STORE,", OP_STORE);
-  define_code_word ("C-FETCH,", OP_C_FETCH);
-  define_code_word ("C-STORE,", OP_C_STORE);
-  define_code_word ("LIT,", OP_LIT);
-  define_code_word ("JMP,", OP_JMP);
-  define_code_word ("JZ,", OP_JZ);
-  define_code_word ("DRJNE,", OP_DRJNE);
-  define_code_word ("CALL,", OP_CALL);
-  define_code_word ("RET,", OP_RET);
-  define_code_word ("EX,", OP_EX);
-  define_code_word ("A,", OP_A);
-  define_code_word ("A-STORE,", OP_A_STORE);
-  define_code_word ("FETCH-A,", OP_FETCH_A);
-  define_code_word ("STORE-A,", OP_STORE_A);
-  define_code_word ("FETCH-PLUS,", OP_FETCH_PLUS);
-  define_code_word ("STORE-PLUS,", OP_STORE_PLUS);
-  define_code_word ("FETCH-R,", OP_FETCH_R);
-  define_code_word ("STORE-R,", OP_STORE_R);
-  define_code_word ("C-FETCH-A,", OP_C_FETCH_A);
-  define_code_word ("C-STORE-A,", OP_C_STORE_A);
-  define_code_word ("C-FETCH-PLUS,", OP_C_FETCH_PLUS);
-  define_code_word ("C-STORE-PLUS,", OP_C_STORE_PLUS);
-  define_code_word ("C-FETCH-R,", OP_C_FETCH_R);
-  define_code_word ("C-STORE-R,", OP_C_STORE_R);
-  define_code_word ("PICK,", OP_PICK);
-  define_code_word ("RPICK,", OP_R_PICK);
-  define_code_word ("DEPTH,", OP_DEPTH);
-  define_code_word ("MOD,", OP_MOD);
-  define_code_word ("U-MOD,", OP_U_MOD);
-  define_code_word ("NEGATE,", OP_NEGATE);
-  define_code_word ("THROW,", OP_THROW);
-  define_code_word ("CATCH,", OP_CATCH);
-  define_code_word ("MACRO,", OP_MACRO);
-  define_code_word ("CLEAR-PARAMETER-STACK,", OP_CLEAR_PARAMETER_STACK);
-  define_code_word ("CLEAR-RETURN-STACK,", OP_CLEAR_RETURN_STACK);
-  define_code_word ("DOT-S,", OP_DOT_S);
+  define_opcode_word ("HALT,", OP_HALT);
+  define_opcode_word ("NOP,", OP_NOP);
+  define_opcode_word ("DUP,", OP_DUP);
+  define_opcode_word ("SWAP,", OP_SWAP);
+  define_opcode_word ("DROP,", OP_DROP);
+  define_opcode_word ("OVER,", OP_OVER);
+  define_opcode_word ("ROT,", OP_ROT);
+  define_opcode_word ("MINUS-ROT,", OP_MINUS_ROT);
+  define_opcode_word ("NIP,", OP_NIP);
+  define_opcode_word ("TUCK,", OP_TUCK);
+  define_opcode_word ("ROT-DROP,", OP_ROT_DROP);
+  define_opcode_word ("ROT-DROP-SWAP,", OP_ROT_DROP_SWAP);
+  define_opcode_word ("PLUS,", OP_PLUS);
+  define_opcode_word ("MINUS,", OP_MINUS);
+  define_opcode_word ("STAR,", OP_STAR);
+  define_opcode_word ("SLASH,", OP_SLASH);
+  define_opcode_word ("U-PLUS,", OP_U_PLUS);
+  define_opcode_word ("U-MINUS,", OP_U_MINUS);
+  define_opcode_word ("U-STAR,", OP_U_STAR);
+  define_opcode_word ("U-SLASH,", OP_U_SLASH);
+  define_opcode_word ("ONE-PLUS,", OP_ONE_PLUS);
+  define_opcode_word ("ONE-MINUS,", OP_ONE_MINUS);
+  define_opcode_word ("INVERT,", OP_INVERT);
+  define_opcode_word ("AND,", OP_AND);
+  define_opcode_word ("OR,", OP_OR);
+  define_opcode_word ("XOR,", OP_XOR);
+  define_opcode_word ("TWO-STAR,", OP_TWO_STAR);
+  define_opcode_word ("U-TWO-SLASH,", OP_U_TWO_SLASH);
+  define_opcode_word ("TWO-SLASH,", OP_TWO_SLASH);
+  define_opcode_word ("R-SHIFT,", OP_R_SHIFT);
+  define_opcode_word ("L-SHIFT,", OP_L_SHIFT);
+  define_opcode_word ("TRUE,", OP_TRUE);
+  define_opcode_word ("FALSE,", OP_FALSE);
+  define_opcode_word ("ZERO-EQUALS,", OP_ZERO_EQUALS);
+  define_opcode_word ("ZERO-LESS,", OP_ZERO_LESS);
+  define_opcode_word ("U-GREATER-THAN,", OP_U_GREATER_THAN);
+  define_opcode_word ("U-LESS-THAN,", OP_U_LESS_THAN);
+  define_opcode_word ("EQUALS,", OP_EQUALS);
+  define_opcode_word ("U-GREATER-EQUALS,", OP_U_GREATER_EQUALS);
+  define_opcode_word ("U-LESS-EQUALS,", OP_U_LESS_EQUALS);
+  define_opcode_word ("NOT-EQUALS,", OP_NOT_EQUALS);
+  define_opcode_word ("GREATER-THAN,", OP_GREATER_THAN);
+  define_opcode_word ("LESS-THAN,", OP_LESS_THAN);
+  define_opcode_word ("GREATER-EQUALS,", OP_GREATER_EQUALS);
+  define_opcode_word ("LESS-EQUALS,", OP_LESS_EQUALS);
+  define_opcode_word ("TO-R,", OP_TO_R);
+  define_opcode_word ("R-FROM,", OP_R_FROM);
+  define_opcode_word ("R-FETCH,", OP_R_FETCH);
+  define_opcode_word ("R-FROM-DROP,", OP_R_FROM_DROP);
+  define_opcode_word ("FETCH,", OP_FETCH);
+  define_opcode_word ("STORE,", OP_STORE);
+  define_opcode_word ("C-FETCH,", OP_C_FETCH);
+  define_opcode_word ("C-STORE,", OP_C_STORE);
+  define_opcode_word ("LIT,", OP_LIT);
+  define_opcode_word ("JMP,", OP_JMP);
+  define_opcode_word ("JZ,", OP_JZ);
+  define_opcode_word ("DRJNE,", OP_DRJNE);
+  define_opcode_word ("CALL,", OP_CALL);
+  define_opcode_word ("RET,", OP_RET);
+  define_opcode_word ("EX,", OP_EX);
+  define_opcode_word ("A,", OP_A);
+  define_opcode_word ("A-STORE,", OP_A_STORE);
+  define_opcode_word ("FETCH-A,", OP_FETCH_A);
+  define_opcode_word ("STORE-A,", OP_STORE_A);
+  define_opcode_word ("FETCH-PLUS,", OP_FETCH_PLUS);
+  define_opcode_word ("STORE-PLUS,", OP_STORE_PLUS);
+  define_opcode_word ("FETCH-R,", OP_FETCH_R);
+  define_opcode_word ("STORE-R,", OP_STORE_R);
+  define_opcode_word ("C-FETCH-A,", OP_C_FETCH_A);
+  define_opcode_word ("C-STORE-A,", OP_C_STORE_A);
+  define_opcode_word ("C-FETCH-PLUS,", OP_C_FETCH_PLUS);
+  define_opcode_word ("C-STORE-PLUS,", OP_C_STORE_PLUS);
+  define_opcode_word ("C-FETCH-R,", OP_C_FETCH_R);
+  define_opcode_word ("C-STORE-R,", OP_C_STORE_R);
+  define_opcode_word ("PICK,", OP_PICK);
+  define_opcode_word ("RPICK,", OP_R_PICK);
+  define_opcode_word ("DEPTH,", OP_DEPTH);
+  define_opcode_word ("MOD,", OP_MOD);
+  define_opcode_word ("U-MOD,", OP_U_MOD);
+  define_opcode_word ("NEGATE,", OP_NEGATE);
+  define_opcode_word ("THROW,", OP_THROW);
+  define_opcode_word ("CATCH,", OP_CATCH);
+  define_opcode_word ("MACRO,", OP_MACRO);
+  define_opcode_word ("CLEAR-PARAMETER-STACK,",
+		      OP_CLEAR_PARAMETER_STACK);
+  define_opcode_word ("CLEAR-RETURN-STACK,",
+		      OP_CLEAR_RETURN_STACK);
+  define_opcode_word ("DOT-S,", OP_DOT_S);
 
   define_constant_word ("ENTRY-NAME", MEMBER_OFFSET (Entry, name));
   define_constant_word ("ENTRY-FLAG", MEMBER_OFFSET (Entry, flag));
@@ -352,54 +354,55 @@ define_bootstrap ()
   Cell label1, label2, patch1, patch2;
 
   define ("COUNT");
-  emit_slot (OP_DUP);
-  emit_slot_with_instruction (OP_LIT, sizeof (Character));
-  emit_slot (OP_PLUS);
-  emit_slot (OP_SWAP);
-  emit_slot (OP_C_FETCH);
-  emit_slot (OP_RET);
+  emit_instruction_slot (OP_DUP);
+  emit_instruction_slot_and_word (OP_LIT, sizeof (Character));
+  emit_instruction_slot (OP_PLUS);
+  emit_instruction_slot (OP_SWAP);
+  emit_instruction_slot (OP_C_FETCH);
+  emit_instruction_slot (OP_RET);
 
   define ("BOOTSTRAP");
-  emit_slot (OP_CLEAR_PARAMETER_STACK);
-  emit_slot (OP_CLEAR_RETURN_STACK);
-  fill_instruction (OP_NOP);
+  emit_instruction_slot (OP_CLEAR_PARAMETER_STACK);
+  emit_instruction_slot (OP_CLEAR_RETURN_STACK);
+  fill_instruction_word (OP_NOP);
   label1 = sys.data_pointer;
-  emit_slot_with_instruction (OP_LIT, 0);
-  emit_slot_with_instruction (OP_LIT, O (in));
-  emit_slot (OP_STORE);
-  emit_slot_with_instruction (OP_LIT, O (input_buffer));
-  emit_slot (OP_FETCH);
-  emit_slot_with_instruction (OP_LIT, 128);
+  emit_instruction_slot_and_word (OP_LIT, 0);
+  emit_instruction_slot_and_word (OP_LIT, O (in));
+  emit_instruction_slot (OP_STORE);
+  emit_instruction_slot_and_word (OP_LIT, O (input_buffer));
+  emit_instruction_slot (OP_FETCH);
+  emit_instruction_slot_and_word (OP_LIT, 128);
   emit_call ("ACCEPT-INPUT");
-  emit_slot_with_instruction (OP_LIT, 10);
+  emit_instruction_slot_and_word (OP_LIT, 10);
   emit_call ("EMIT");
-  emit_slot_with_instruction (OP_LIT, O (number_input_buffer));
-  emit_slot (OP_STORE);
-  fill_instruction (OP_NOP);
+  emit_instruction_slot_and_word (OP_LIT, O (number_input_buffer));
+  emit_instruction_slot (OP_STORE);
+  fill_instruction_word (OP_NOP);
   label2 = sys.data_pointer;
-  emit_slot_with_instruction (OP_LIT, ' ');
+  emit_instruction_slot_and_word (OP_LIT, ' ');
   emit_call ("SKIP-DELIMITERS");
-  emit_slot_with_instruction (OP_LIT, ' ');
+  emit_instruction_slot_and_word (OP_LIT, ' ');
   emit_call ("FIND-DELIMITER");
-  emit_slot (OP_DUP);
-  patch1 = emit_slot_with_instruction (OP_JZ, -1);
+  emit_instruction_slot (OP_DUP);
+  patch1 = emit_instruction_slot_and_word (OP_JZ, -1);
   emit_call ("FIND-WORD");
-  emit_slot (OP_DUP);
-  emit_slot (OP_DUP);
-  patch2 = emit_slot_with_instruction (OP_JZ, -1);
-  emit_slot (OP_DROP);
-  emit_slot_with_instruction (OP_LIT, MEMBER_OFFSET (Entry, code_pointer));
-  emit_slot (OP_PLUS);
-  emit_slot (OP_FETCH);
-  emit_slot (OP_TO_R);  
-  emit_slot (OP_EX);
-  fill_instruction (OP_NOP);
-  emit_slot_with_instruction (OP_JMP, label2);
-  fill_instruction (OP_NOP);
+  emit_instruction_slot (OP_DUP);
+  emit_instruction_slot (OP_DUP);
+  patch2 = emit_instruction_slot_and_word (OP_JZ, -1);
+  emit_instruction_slot (OP_DROP);
+  emit_instruction_slot_and_word
+    (OP_LIT, MEMBER_OFFSET (Entry, code_pointer));
+  emit_instruction_slot (OP_PLUS);
+  emit_instruction_slot (OP_FETCH);
+  emit_instruction_slot (OP_TO_R);  
+  emit_instruction_slot (OP_EX);
+  fill_instruction_word (OP_NOP);
+  emit_instruction_slot_and_word (OP_JMP, label2);
+  fill_instruction_word (OP_NOP);
   V (patch2) = V (patch1) = sys.data_pointer;
-  emit_slot (OP_DROP);
-  emit_slot (OP_DROP);
-  emit_slot_with_instruction (OP_JMP, label1);
+  emit_instruction_slot (OP_DROP);
+  emit_instruction_slot (OP_DROP);
+  emit_instruction_slot_and_word (OP_JMP, label1);
 }
 
 void

@@ -139,7 +139,7 @@ static_allocate (Cell size)
 }
 
 void
-emit_slot (Cell code)
+emit_instruction_slot (Cell slot)
 {
   Cell offset, instruction_word, *word_pointer;
 
@@ -153,34 +153,34 @@ emit_slot (Cell code)
   offset = sizeof (Cell) - offset;
   instruction_word = sys.instruction_word - sizeof (Cell);
   word_pointer = (Cell *) (((char *) &sys) + instruction_word);
-  *word_pointer |= MASK_SLOT (code, offset);
+  *word_pointer |= MASK_SLOT (slot, offset);
 }
 
 void
-emit_instruction (Cell instruction)
+emit_instruction_word (Cell word)
 {
   Cell offset;
 
   offset = allocate (sizeof (Cell));
-  V (offset) = instruction;
+  V (offset) = word;
 }
 
 Cell
-emit_slot_with_instruction (Cell code, Cell instruction)
+emit_instruction_slot_and_word (Cell slot, Cell word)
 {
   Cell patch;
 
-  emit_slot (code);
+  emit_instruction_slot (slot);
   patch = sys.data_pointer;
-  emit_instruction (instruction);
+  emit_instruction_word (word);
   return patch;
 }
 
 void
-fill_instruction (Cell code)
+fill_instruction_word (Cell slot)
 {
   while (sys.instruction_slot != sys.instruction_word)
-    emit_slot (code);
+    emit_instruction_slot (slot);
 }
 
 Cell
