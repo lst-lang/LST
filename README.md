@@ -21,6 +21,7 @@ The implementation would consist of four basic components:
 * Static Array: `[3] int`, `[3][4][5] real`
 * Dynamic Array: `[] char`
 * Reference/Pointer: `ref int`, `ref [3] real`, `ref [] char`
+* Function/Procedure: `(int, int) void`, `((int int) void, int, int) void`
 
 ## Statements
 * Assignment: `a := 1`, `b := 3.0`
@@ -36,7 +37,6 @@ The implementation would consist of four basic components:
 * Structure/Record with two members: `data rect = length * width`
 * Structure/Record with a single member: `data circle = * radius`
 * Union: `data shape = srect | scircle`
-* Function/Procedure: `data filter = lambda x`
 
 ## Declaration
 A declaration statement specifies the type of variables and functions.
@@ -85,7 +85,7 @@ prog vars arrayofshapes c;
    arrayofshapes := makearray(1, ref shape);
    arrayofshapes[0] := make(shape);
    radius(c) := 10;
-   deref(arrayofshapes[0]) := c;
+   scricle(deref(arrayofshapes[0])) := c;
    print(areaofshape(deref(arrayofshapes[0])))
 end
 ```
@@ -120,7 +120,7 @@ translate to s-expressions:
    (SETQ ARRAYOFSHAPES (MAKEARRAY 1 (REFERENCE SHAPE)))
    (SETQ (ARRAYOFSHAPES 0) (MAKE SHAPE))
    (SETQ (RADIUS C) 10)
-   (SETQ (DEREFERENCE (ARRAYOFSHAPES 0)) C)
+   (SETQ (SCIRCLE (DEREFERENCE (ARRAYOFSHAPES 0))) C)
    (PRINT (AREAOFSHAPE (DEREFERENCE (ARRAYOFSHAPES 0)))))))
 ```
 
