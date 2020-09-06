@@ -321,11 +321,12 @@ quit
 : 2! swap over ! cell+ ! ;
 : 2@ dup cell+ @ swap @ ;
 : dm* swap over m* >r >r m* r> or r> ;
-: >number begin dup while
+: 0> 0 > ;
+: >number begin dup 0> while
    over c@ dup ?digit over ?alpha or 0=
-   if drop, exit
+   if drop exit
    then parse-digit dup [ base ] literal @ >=
-   if drop, exit then swap 1- >r swap char+ >r >r
+   if drop exit then swap 1- >r swap char+ >r >r
    [ base ] literal @ um* drop >r
    [ base ] literal @ um* r> +
    r> 0 d+ r> r> repeat ;
@@ -335,7 +336,6 @@ quit
 : abort" postpone s" postpone <abort"> ; immediate
 : abs dup 0< if negate then ;
 : aligned [ cell-size ] literal align-number ;
-: align aligned [ here ] literal ! ;
 : c, [ char-size ] literal allot c! ;
 : char parse-name drop c@ ;
 : <constant> ?interp 0= if postpone literal then ;
@@ -348,7 +348,6 @@ base constant base 32 constant bl
 input constant input #input constant #input in constant >in
 : execute @code >r [ ex, fill-nop, ] ;
 <false> constant false
-: 0> 0 > ;
 : fill over dup 0> if swap >r swap r>
    for 2dup c! char+ next then 2drop ;
 : find dup count find-word dup 0=
@@ -356,6 +355,7 @@ input constant input #input constant #input in constant >in
    dup [ entry-flag ] literal + @ dup 0=
    if 1- then ;
 here constant here
+: align here @ aligned here ! ;
 : lshift dup if for 2* next exit then drop ;
 : max 2dup < if swap then drop ;
 : min 2dup > if swap then drop ;
@@ -369,10 +369,7 @@ here constant here
 <true> constant true
 : ud. <# <#s> #> type 32 emit ;
 : u. 0 ud. ;
-: variable 32 word count
-   begin, 53 0 slot-instruction, >r
-   postpone <constant> ret, end, immediate
-   [ cell-size ] literal allot r> ! ;
+: variable 1 cells allot constant ;
 : ['] ' postpone literal ; immediate
 : [char] char postpone literal ; immediate
 variable leaves
@@ -577,7 +574,7 @@ variable fsp 32 floats allot constant fstack
    dup fsp ! floats fstack + ;
 : fdrop fsp @ dup 0< if -4 [ throw, ] then 1- fsp ! ;
 : @float fsp @ dup 0< if -4 [ throw, ] then floats fstack + ;
-: f! @float swap [f!] drop ;
+: f! @float swap [f!] drop fdrop ;
 : f@ one-more-float [f!] drop ;
 : fbinary @float fdrop @float ;
 : f* fbinary [f*] drop ;
@@ -605,6 +602,44 @@ variable fsp 32 floats allot constant fstack
 : fmin fover fover f< 0= if fswap then fdrop ;
 : fmax fover fover f< if fswap then fdrop ;
 : float. @float [float.] drop fdrop ;
+: next-char 1- swap char+ swap ;
+: parse-sign dup 0= if 1 exit then
+   over c@ '+' = if next-char 1 exit then
+   over c@ '-' = if next-char -1 exit then 1 ;
+: parse-digits >r >r 0 0 r> r> >number ;
+: bad-significand 2drop ud>f false ;
+: parse-fraction dup 0= if exit then
+   over c@ '.' = if next-char >number then ;
+: ud>fraction base @ 0 ud>f ud>f
+   begin fdup 1 0 ud>f f< 0=
+   while fover f/ repeat fswap fdrop ;
+: parse-significand parse-sign >r dup >r parse-digits
+   dup r> = if r> drop bad-significand exit then
+   >r >r ud>f 0 0 r> r> parse-fraction
+   >r >r ud>fraction r> r> f+ r> 0< if fnegate then true ;
+: ?e-form dup 'D' = if drop true exit then
+   dup 'd' = if drop true exit then
+   dup 'E' = if drop true exit then
+   'e' = if true exit then false ;
+: skip-e-form begin dup 0> while
+   over c@ ?e-form 0= if exit then next-char repeat ;
+: parse-exponent dup 0= if 1 exit then
+   skip-e-form parse-sign >r >number r> ;
+: **base base @ 0 ud>f fswap for fover f* next fswap fdrop ;
+: //base base @ 0 ud>f fswap for fover f/ next fswap fdrop ;
+: >float parse-significand 0= if exit then
+   >r >r 0 0 r> r> parse-exponent
+   >r 0> if r> 2drop 2drop false exit then
+   2drop dup 0= if r> 2drop true exit then
+   r> 0> if **base true exit then //base true ;
+: faligned 1 floats align-number ;
+: falign here @ faligned here ! ;
+: [fliteral] 1 floats static-allot dup f! ;
+: fliteral ?interp if -14 [ throw, ]
+   then [fliteral] postpone literal postpone f@ ; immediate
+: fconstant [fliteral] >r 32 word count begin,
+   53 r> slot-instruction, drop postpone f@ ret, end, ;
+: fvariable 1 floats allot constant ;
 
 \ optional tools word set.
 1 macro dump 1 macro see 1 macro words
