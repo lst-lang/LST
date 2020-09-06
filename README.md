@@ -37,6 +37,7 @@ The implementation would consist of four basic components:
 * Structure/Record with two members: `data rect = length * width`
 * Structure/Record with a single member: `data circle = * radius`
 * Union: `data shape = srect | scircle`
+* Alias: `data shape2 = shape`
 
 ## Declaration
 A declaration statement specifies the type of variables and functions.
