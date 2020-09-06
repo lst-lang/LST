@@ -16,6 +16,8 @@
 \ GNU General Public License along with this program.
 \ If not, see http://www.gnu.org/licenses/.
 
+
+\ forth              interpreter                        09-06-20
 number 0 number -1
 begin, parse-name number, 32 postpone, skip-delimiters
 number, 32 postpone, find-delimiter ret, end,
@@ -131,6 +133,7 @@ store, ret, end, immediate
 define, ] postpone, <false> state literal store, ret, end,
 quit
 
+\ forth              core & block word sets             09-06-20
 : dump [ halt, ] ; immediate
 : ?interp state [ fetch, ] ;
 : [literal] literal ; immediate
@@ -369,7 +372,11 @@ here constant here
 <true> constant true
 : ud. <# <#s> #> type 32 emit ;
 : u. 0 ud. ;
-: variable 1 cells allot constant ;
+: [variable] 32 word count
+   begin, 53 0 slot-instruction, >r
+   postpone <constant> ret, end, immediate
+   allot r> ! ;
+: variable 1 cells [variable] ;
 : ['] ' postpone literal ; immediate
 : [char] char postpone literal ; immediate
 variable leaves
@@ -480,7 +487,7 @@ updated-buffers 4 cells erase
    2dup < if 2drop r> 2drop false exit then [search] ;
 : bye [ HALT, ] ;
 
-\ optional file word set.
+\ forth              optional file word set             09-06-20
 0 macro fptrs 0 macro fopen 0 macro fclose
 0 macro fremove 0 macro fread 0 macro fwrite
 0 macro feof 0 macro ferror 0 macro fseek 0 macro ftell
@@ -562,7 +569,7 @@ variable strbuf-pointer string-buffer1 strbuf-pointer !
    cell+ dup >r swap cmove r> r> ;
 : s" ?interp if file-s" exit then postpone s" ; immediate
 
-\ optional floating-point word set.
+\ forth         optional floating-point word set        09-06-20
 0 macro [f!] 0 macro [f*] 0 macro [f+] 0 macro [f-]
 0 macro [f/] 0 macro [f<] 0 macro [f/] 0 macro floats
 0 macro [floor] 0 macro [fnegate] 0 macro [frot]
@@ -582,7 +589,7 @@ variable fsp 32 floats allot constant fstack
 : f- fbinary [f-] drop ;
 : f/ fbinary [f/] drop ;
 : f< fbinary swap [f<] fdrop ;
-: floor @float [floor] fdrop ;
+: floor @float [floor] drop ;
 : fround @float [fround] drop ;
 : fnegate @float [fnegate] drop ;
 : ud>f one-more-float [ud>f] drop ;
@@ -594,8 +601,10 @@ variable fsp 32 floats allot constant fstack
 : float+ 1 floats + ;
 : fswap fsp @ 1 < if -4 [ throw, ] then @float [fswap] drop ;
 : frot fsp @ 2 < if -4 [ throw, ] then @float [frot] drop ;
-: uf>d fdup 0 1 d>f f< if floor exit then
-   fdup 0 1 d>f fover fover f/ f* f- floor 0 1 d>f f/ floor ;
+: <floor> @float [floor] fdrop ;
+: uf>d fdup 0 1 d>f f< if <floor> 0 exit then
+   fdup  0 1 d>f fover fover f/ f* f- <floor>
+   0 1 d>f f/ <floor> ;
 : f0< @float [f0<] fdrop ;
 : f0= @float [f0=] fdrop ;
 : f>d fdup f0< if fnegate uf>d dnegate exit then uf>d ;
@@ -639,9 +648,17 @@ variable fsp 32 floats allot constant fstack
    then [fliteral] postpone literal postpone f@ ; immediate
 : fconstant [fliteral] >r 32 word count begin,
    53 r> slot-instruction, drop postpone f@ ret, end, ;
-: fvariable 1 floats allot constant ;
+: fvariable 1 floats [variable] ;
+: significand >r >r uf>d <# #s #> r>
+   swap r> swap over min dup >r swap over 
+   - >r over over chars + >r cmove r> r> r> ;
+: frac>sig dup 0= if exit then
+   fdup floor f- for base @ 0 d>f f* next ;
+: represent fdup fdup f0< if fnegate then
+   fdup floor significand >r dup frac>sig fround significand
+   drop 2drop r> f0< true ;
 
-\ optional tools word set.
+\ forth              optional tools word set            09-06-20
 1 macro dump 1 macro see 1 macro words
 : .s ?interp if [ dot-s, ] exit then dot-s, ; immediate
 : ? @ . ;
