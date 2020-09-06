@@ -218,16 +218,9 @@ define_words (void)
   define_macro_word ("IMMEDIATE", 1);
   define_macro_word ("LITERAL", 1);
   define_macro_word ("EMIT", 1);
-  define_macro_word ("ERASE", 1);
   define_macro_word ("!BLOCK", 0);
   define_macro_word ("@BLOCK", 0);
   define_macro_word ("RECURSE", 1);
-  define_macro_word ("COMPARE", 0);
-  define_macro_word ("MOVE", 1);
-  define_macro_word ("CMOVE", 1);
-  define_macro_word ("CMOVE>", 1);
-  define_macro_word ("DISPLAY-SYSERR", 1);
-  define_macro_word ("ALIGN-NUMBER", 0);
   define_macro_word ("KEY", 0);
 				  
   define_opcode_word ("HALT,", OP_HALT);
@@ -354,11 +347,10 @@ define_bootstrap ()
   Cell label1, label2, patch1, patch2;
 
   define ("COUNT");
-  emit_instruction_slot (OP_DUP);
-  emit_instruction_slot_and_word (OP_LIT, sizeof (Character));
-  emit_instruction_slot (OP_PLUS);
+  emit_instruction_slot (OP_A_STORE);
+  emit_instruction_slot (OP_C_FETCH_PLUS);
+  emit_instruction_slot (OP_A);
   emit_instruction_slot (OP_SWAP);
-  emit_instruction_slot (OP_C_FETCH);
   emit_instruction_slot (OP_RET);
 
   define ("BOOTSTRAP");

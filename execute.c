@@ -381,12 +381,12 @@ execute (Cell pc)
 	    break;
 	  case OP_FETCH_PLUS:
 	    PUSH_PARAMETER (V (a));
-	    a += sizeof(Cell);
+	    a += sizeof (Cell);
 	    break;
 	  case OP_STORE_PLUS:
 	    V (a) = t;
 	    t = POP_PARAMETER;
-	    a += sizeof(Cell);
+	    a += sizeof (Cell);
 	    break;
 	  case OP_FETCH_R:
 	    PUSH_PARAMETER (V (rt));
@@ -394,7 +394,7 @@ execute (Cell pc)
 	  case OP_STORE_R:
 	    V (rt) = t;
 	    t = POP_PARAMETER;
-	    rt += sizeof(Cell);
+	    rt += sizeof (Cell);
 	    break;
 	  case OP_C_FETCH_A:
 	    PUSH_PARAMETER (CV (a));

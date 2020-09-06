@@ -235,17 +235,7 @@ find_word (Character *name, Cell size)
         break;
       vocabulary = e->link;
     }
-
-  if (vocabulary == 0)
-    {
-      sys.task.last_word = (Byte *) name - (Byte *) &sys;
-      sys.task.last_word_size = size;
-      return vocabulary;
-    }
-  else
-    {
-      return vocabulary;
-    }
+  return vocabulary;
 }
 
 void

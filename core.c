@@ -27,89 +27,6 @@
 #define O(m)								\
   MEMBER_OFFSET (System, task) + MEMBER_OFFSET (Terminal_Task, m)
 
-static char *error_messages[] =
-  {
-   "ABORT",
-   "ABORT\"",
-   "STACK OVERFLOW",
-   "STACK UNDERFLOW",
-   "RETURN STACK OVERFLOW",
-   "RETURN STACK UNDERFLOW",
-   "DO-LOOPS NESTED TOO DEEPLY DURING EXECUTION",
-   "DICTIONARY OVERFLOW",
-   "INVALID MEMORY ADDRESS",
-   "DIVISION BY ZERO",
-   "RESULT OUT OF RANGE",
-   "ARGUMENT TYPE MISMATCH",
-   "UNDEFINED WORD",
-   "INTERPRETING A COMPILE-ONLY WORD",
-   "INVALID FORGET",
-   "ATTEMPT TO USE ZERO-LENGTH STRING AS A NAME",
-   "PICTURED NUMERIC OUTPUT STRING OVERFLOW",
-   "PARSED STRING OVERFLOW",
-   "DEFINITION NAME TOO LONG",
-   "WRITE TO A READ-ONLY LOCATION",
-   "UNSUPPORTED OPERATION",
-   "CONTROL STRUCTURE MISMATCH",
-   "ADDRESS ALIGNMENT EXCEPTION",
-   "INVALID NUMERIC ARGUMENT",
-   "RETURN STACK IMBALANCE",
-   "LOOP PARAMETERS UNAVAILABLE",
-   "INVALID RECURSION",
-   "USER INTERRUPT",
-   "COMPILER NESTING",
-   "OBSOLESCENT FEATURE",
-   ">BODY USED ON NON-CREATED DEFINITION",
-   "INVALID NAME ARGUMENT",
-   "BLOCK READ EXCEPTION",
-   "BLOCK WRITE EXCEPTION",
-   "INVALID BLOCK NUMBER",
-   "INVALID FILE POSITION",
-   "FILE I/O EXCEPTION",
-   "NON-EXISTENT FILE",
-   "UNEXPECTED END OF FILE",
-   "INVALIDBASEFOR FLOATING POINT CONVERSION",
-   "LOSS OF PRECISION",
-   "FLOATING-POINT DIVIDE BY ZERO",
-   "FLOATING-POINT RESULT OUT OF RANGE",
-   "FLOATING-POINT STACK OVERFLOW",
-   "FLOATING-POINT STACK UNDERFLOW",
-   "FLOATING-POINT INVALID ARGUMENT",
-   "COMPILATION WORD LIST DELETED",
-   "INVALID POSTPONE",
-   "SEARCH-ORDER OVERFLOW",
-   "SEARCH-ORDER UNDERFLOW",
-   "COMPILATION WORD LIST CHANGED",
-   "CONTROL-FLOW STACK OVERFLOW",
-   "EXCEPTION STACK OVERFLOW",
-   "FLOATING-POINT UNDERFLOW",
-   "FLOATING-POINT UNIDENTIFIED FAULT",
-   "QUIT",
-   "EXCEPTION IN SENDING OR RECEIVING A CHARACTER",
-   "[IF], [ELSE], OR [THEN] EXCEPTION",
-   "ALLOCATE",
-   "FREE",
-   "RESIZE",
-   "CLOSE-FILE",
-   "CREATE-FILE",
-   "DELETE-FILE",
-   "FILE-POSITION",
-   "FILE-SIZE",
-   "FILE-STATUS",
-   "FLUSH-FILE",
-   "OPEN-FILE",
-   "READ-FILE",
-   "READ-LINE",
-   "RENAME-FILE",
-   "REPOSITION-FILE",
-   "RESIZE-FILE",
-   "WRITE-FILE",
-   "WRITE-LINE",
-   "MALFORMED XCHAR",
-   "SUBSTITUTE",
-   "REPLACES"
-  };
-
 static int
 is_delimiter (Character c, Character d)
 {
@@ -341,13 +258,6 @@ macro_emit (Cell number)
 }
 
 Cell
-macro_erase (Cell addr, Cell u)
-{
-  memset((char *) A (addr), 0, u);
-  return u;
-}
-
-Cell
 macro_fetch_block (Cell b, Cell u)
 {
   FILE *f;
@@ -418,114 +328,6 @@ macro_store_block (Cell b, Cell u)
 }
 
 Cell
-macro_move (Cell addr1, Cell addr2, Cell u)
-{
-  if (u)
-    {
-      Cell *_addr1, *_addr2;
-      
-      _addr1 = (Cell *) A (addr1);
-      _addr2 = (Cell *) A (addr2);
-      while (u--)
-	*_addr2++ = *_addr1++;
-      return 1;
-    }
-  else
-    {
-      return 0;
-    }
-}
-
-Cell
-macro_cmove (Cell c_addr1, Cell c_addr2, Cell u)
-{
-  if (u)
-    {
-      Character *_c_addr1, *_c_addr2;
-      
-      _c_addr1 = (Character *) A (c_addr1);
-      _c_addr2 = (Character *) A (c_addr2);
-      while (u--)
-	*_c_addr2++ = *_c_addr1++;
-      return 1;
-    }
-  else
-    {
-      return 0;
-    }
-}
-
-Cell
-macro_cmove_up (Cell c_addr1, Cell c_addr2, Cell u)
-{
-  if (u)
-    {
-      Character *_c_addr1, *_c_addr2;
-      
-      _c_addr1 = ((Character *) A (c_addr1)) + u;
-      _c_addr2 = ((Character *) A (c_addr2)) + u;
-      while (u--)
-	*--_c_addr2 = *--_c_addr1;
-      return 1;
-    }
-  else
-    {
-      return 0;
-    }
-}
-
-Cell
-macro_compare (Cell c_addr1, Cell u1, Cell c_addr2, Cell u2)
-{
-  Cell i, u;
-  Character *_c_addr1, *_c_addr2, a, b;
-
-  u = (u1 > u2) ? u2 : u1;
-  _c_addr1 = (Character *) A (c_addr1);
-  _c_addr2 = (Character *) A (c_addr2);
-  for (i = 0; i < u; ++i)
-    {
-      a = _c_addr1[i];
-      b = _c_addr2[i];
-      if (a > b)
-	return 1;
-      else if (a < b)
-	return -1;
-      else
-	continue;
-    }
-  return (u1 < u2) ? -1 : (u1 > u2);
-}
-
-Cell
-macro_display_syserr (Cell n)
-{
-  n = (n < 0) ? -n : n;
-  if (n == 13)
-    {
-      Cell i;
-      Character *name;
-
-      name = (Character *) A (sys.task.last_word);
-      for (i = 0; i < sys.task.last_word_size; i++)
-	putchar (toupper (name[i]));
-      printf ("?\n");
-    }
-  else
-    {
-      n -= 1;
-      printf ("%s!\n", error_messages[n]);
-    }
-  return n;
-}
-
-Cell
-macro_align_number (Cell n, Cell a)
-{
-  return ((n + a - 1) & ~(a - 1));
-}
-
-Cell
 macro_key (void)
 {
   fflush (stdout);
@@ -556,14 +358,7 @@ register_core_macros (void)
   register_macro ("IMMEDIATE", (Function) macro_immediate, 0);
   register_macro ("LITERAL", (Function) macro_literal, 1);
   register_macro ("EMIT", (Function) macro_emit, 1);
-  register_macro ("ERASE", (Function) macro_erase, 2);
   register_macro ("@BLOCK", (Function) macro_fetch_block, 2);
   register_macro ("!BLOCK", (Function) macro_store_block, 2);
   register_macro ("RECURSE", (Function) macro_recurse, 0);
-  register_macro ("COMPARE", (Function) macro_compare, 4);
-  register_macro ("MOVE", (Function) macro_move, 3);
-  register_macro ("CMOVE", (Function) macro_cmove, 3);
-  register_macro ("CMOVE>", (Function) macro_cmove_up, 3);
-  register_macro ("DISPLAY-SYSERR", (Function) macro_display_syserr, 1);
-  register_macro ("ALIGN-NUMBER", (Function) macro_align_number, 2);
 }

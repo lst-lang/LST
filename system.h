@@ -70,7 +70,6 @@ struct _Terminal_Task
   Cell t, s, rt, rs, a, i;
   Cell stack[STACK_SIZE];
   Frame *frames;
-  Cell last_word, last_word_size;
   Cell vocabulary, base, in, state, recursive;
   Character terminal_input_buffer[BUFFER_SIZE];
   Cell input_buffer;

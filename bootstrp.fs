@@ -123,11 +123,7 @@ define, : postpone, parse-name postpone, begin,
 postpone, <false> state literal store, ret, end,
 define, ; number, 58 postpone, slot, postpone, end,
 postpone, <true> state literal store, ret, end, immediate
-define, <abortx> postpone, quit ret, end,
-define, abortx dup, number, -1 equals,
-over, number, -2 equals, or, zero-equals,
-if postpone, display-syserr then
-postpone, <abortx> ret, end,
+define, abortx postpone, quit ret, end,
 define, [ postpone, <true> state literal
 store, ret, end, immediate
 define, ] postpone, <false> state literal store, ret, end,
@@ -284,7 +280,8 @@ quit
    [ /pictured ] literal [ #pictured ] literal @ - ;
 : <#s> begin # 2dup d0= until ;
 : #s <# <#s> #> ;
-: type dup if for dup char+ swap c@ emit next then drop ;
+: 0> 0 > ;
+: type swap a! dup 0> if for c@+ emit next exit then drop ;
 : d. dup 0< dup >r if dnegate then
    <# <#s> r> if '-' hold then #> type 32 emit ;
 : . dup 0< if -1 else 0 then d. ;
@@ -317,6 +314,24 @@ quit
    then @code postpone literal 57 [ ' <postpone> @code ]
    literal slot-instruction, drop fill-nop, ; immediate
 : " incin input @ in @ + '"' find-delimiter incin ;
+: char- 1 chars - ;
+: [cmove>] >r r@ 1- chars + swap r@ 1- chars + r>
+   for dup c@ swap char- >r swap dup char- >r c!
+   r> r> next 2drop ;
+: cmove> dup 0> if [cmove>] exit then drop 2drop ;
+: [cmove] >r swap a! r> for c@+ swap >r c!r r> next drop ;
+: cmove dup 0> if [cmove] exit then drop 2drop ;
+: [move] >r swap a! r> for @+ swap >r !r r> next drop ;
+: move dup 0> if [move] exit then drop 2drop ;
+: [result] < if -1 exit then 1 ;
+: result 2dup = if 2drop 0 exit then [result] ;
+: min 2dup > if swap then drop ;
+: max 2dup < if swap then drop ;
+: compare >r swap >r r> r> 2dup >r >r min
+   dup 0= if drop 2drop r> r> result exit then
+   swap a! for >r c@r c@+ 2dup = 0=
+   if r> r> 2drop r> r> 2drop [result] exit then
+   2drop r> char+ next drop r> r> result ;
 : s" ?interp if -14 [ throw, ] then "
    dup >r static-allot r@ over >r cmove
    r> postpone literal r> postpone literal ; immediate
@@ -324,7 +339,6 @@ quit
 : 2! swap over ! cell+ ! ;
 : 2@ dup cell+ @ swap @ ;
 : dm* swap over m* >r >r m* r> or r> ;
-: 0> 0 > ;
 : >number begin dup 0> while
    over c@ dup ?digit over ?alpha or 0=
    if drop exit
@@ -338,6 +352,7 @@ quit
 : <abort"> type 10 emit -2 [ throw, ] ;
 : abort" postpone s" postpone <abort"> ; immediate
 : abs dup 0< if negate then ;
+: align-number dup 1- invert >r + 1- r> and ;
 : aligned [ cell-size ] literal align-number ;
 : c, [ char-size ] literal allot c! ;
 : char parse-name drop c@ ;
@@ -360,8 +375,6 @@ input constant input #input constant #input in constant >in
 here constant here
 : align here @ aligned here ! ;
 : lshift dup if for 2* next exit then drop ;
-: max 2dup < if swap then drop ;
-: min 2dup > if swap then drop ;
 : quit 10 emit quit ;
 : rshift dup if for 2/ next exit then drop ;
 : s>d dup 0< if -1 else 0 then ;
@@ -428,6 +441,10 @@ variable created 0 created !
    2dup s" RETURN-STACK-CELLS" compare 0=
    if 2drop 32 true exit then
    s" STACK-CELLS" compare 0= if 32 true exit then false ;
+: erase-chars dup 0= if drop exit then for 0 c!+ next ;
+: erase-cells dup 0= if drop exit then for 0 !+ next ;
+: erase 1 cells u/mod >r swap a!
+   erase-cells r> 1 chars / erase-chars ;
 : macro parse-name begin,
    82 over entry-name + slot-instruction, drop
    fill-nop, swap if drop, then ret, end, ;
@@ -485,7 +502,114 @@ updated-buffers 4 cells erase
 : search >r over r> swap over
    2dup = if 2drop >r 2dup r> r> compare 0= exit then
    2dup < if 2drop r> 2drop false exit then [search] ;
+: [show-error] dup -1 = if drop ." ABORT" exit then
+   dup -2 = if drop ." ABORT" '"' emit exit then
+   dup -3 = if drop ." STACK OVERFLOW" exit then
+   dup -4 = if drop ." STACK UNDERFLOW" exit then
+   dup -5 = if drop ." RETURN STACK OVERFLOW" exit then
+   dup -6 = if drop ." RETURN STACK UNDERFLOW" exit then
+   dup -7 = if drop ." DO-LOOPS NESTED TOO "
+   ." DEEPLY DURING EXECUTION" exit then
+   dup -8 = if drop ." DICTIONARY OVERFLOW" exit then
+   dup -9 = if drop ." INVALID MEMORY ADDRESS" exit then
+   dup -10 = if drop ." DIVISION BY ZERO" exit then
+   dup -11 = if drop ." RESULT OUT OF RANGE" exit then
+   dup -12 = if drop ." ARGUMENT TYPE MISMATCH" exit then
+   dup -13 = if drop ." UNDEFINED WORD" exit then
+   dup -14 = if drop ." INTERPRETING A COMPILE-ONLY "
+   ." WORD" exit then
+   dup -15 = if drop ." INVALID FORGET" exit then
+   dup -16 = if drop ." ATTEMPT TO USE ZERO-LENGTH STRING "
+   ." AS A NAME" exit then
+   dup -17 = if drop ." PICTURED NUMERIC OUTPUT STRING "
+   ." OVERFLOW" exit then
+   dup -18 = if drop ." PARSED STRING OVERFLOW" exit then
+   dup -19 = if drop ." DEFINITION NAME TOO LONG" exit then
+   dup -20 = if drop ." WRITE TO A READ-ONLY LOCATION" exit then
+   dup -21 = if drop ." UNSUPPORTED OPERATION" exit then
+   dup -22 = if drop ." CONTROL STRUCTURE MISMATCH" exit then
+   dup -23 = if drop ." ADDRESS ALIGNMENT EXCEPTION" exit then
+   dup -24 = if drop ." INVALID NUMERIC ARGUMENT" exit then
+   dup -25 = if drop ." RETURN STACK IMBALANCE" exit then
+   dup -26 = if drop ." LOOP PARAMETERS UNAVAILABLE" exit then
+   dup -27 = if drop ." INVALID RECURSION" exit then
+   dup -28 = if drop ." USER INTERRUPT" exit then
+   dup -29 = if drop ." COMPILER NESTING" exit then
+   dup -30 = if drop ." OBSOLESCENT FEATURE" exit then
+   dup -31 = if drop ." >BODY USED ON NON-CREATED "
+   ." DEFINITION" exit then
+   dup -32 = if drop ." INVALID NAME ARGUMENT" exit then
+   dup -33 = if drop ." BLOCK READ EXCEPTION" exit then
+   dup -34 = if drop ." BLOCK WRITE EXCEPTION" exit then
+   dup -35 = if drop ." INVALID BLOCK NUMBER" exit then
+   dup -36 = if drop ." INVALID FILE POSITION" exit then
+   dup -37 = if drop ." FILE I/O EXCEPTION" exit then
+   dup -38 = if drop ." NON-EXISTENT FILE" exit then
+   dup -39 = if drop ." UNEXPECTED END OF FILE" exit then
+   dup -41 = if drop ." INVALIDBASEFOR FLOATING POINT "
+   ." CONVERSION" exit then
+   dup -42 = if drop ." LOSS OF PRECISION" exit then
+   dup -43 = if drop ." FLOATING-POINT DIVIDE BY ZERO" exit then
+   dup -44 = if drop ." FLOATING-POINT RESULT "
+   s" OUT OF RANGE" exit then
+   dup -45 = if drop ." FLOATING-POINT STACK OVERFLOW" exit then
+   dup -46 = if drop ." FLOATING-POINT STACK UNDERFLOW"
+   exit then
+   dup -47 = if drop ." FLOATING-POINT INVALID ARGUMENT"
+   exit then
+   dup -48 = if drop ." COMPILATION WORD LIST DELETED" exit then
+   dup -49 = if drop ." INVALID POSTPONE" exit then
+   dup -50 = if drop ." SEARCH-ORDER OVERFLOW" exit then
+   dup -51 = if drop ." SEARCH-ORDER UNDERFLOW" exit then
+   dup -52 = if drop ." COMPILATION WORD LIST CHANGED" exit then
+   dup -53 = if drop ." CONTROL-FLOW STACK OVERFLOW" exit then
+   dup -54 = if drop ." EXCEPTION STACK OVERFLOW" exit then
+   dup -55 = if drop ." FLOATING-POINT UNDERFLOW" exit then
+   dup -56 = if drop ." FLOATING-POINT UNIDENTIFIED FAULT"
+   exit then
+   dup -57 = if drop ." QUIT" exit then
+   dup -58 = if drop ." EXCEPTION IN SENDING OR "
+   s" RECEIVING A CHARACTER" exit then
+   dup -59 = if drop ." [IF], [ELSE], OR [THEN] EXCEPTION"
+   exit then
+   dup -60 = if drop ." ALLOCATE" exit then
+   dup -61 = if drop ." FREE" exit then
+   dup -62 = if drop ." RESIZE" exit then
+   dup -63 = if drop ." CLOSE-FILE" exit then
+   dup -64 = if drop ." CREATE-FILE" exit then
+   dup -65 = if drop ." DELETE-FILE" exit then
+   dup -66 = if drop ." FILE-POSITION" exit then
+   dup -67 = if drop ." FILE-SIZE" exit then
+   dup -68 = if drop ." FILE-STATUS" exit then
+   dup -69 = if drop ." FLUSH-FILE" exit then
+   dup -70 = if drop ." OPEN-FILE" exit then
+   dup -71 = if drop ." READ-FILE" exit then
+   dup -72 = if drop ." READ-LINE" exit then
+   dup -73 = if drop ." RENAME-FILE" exit then
+   dup -74 = if drop ." REPOSITION-FILE" exit then
+   dup -75 = if drop ." RESIZE-FILE" exit then
+   dup -76 = if drop ." WRITE-FILE" exit then
+   dup -77 = if drop ." WRITE-LINE" exit then
+   dup -78 = if drop ." MALFORMED XCHAR" exit then
+   dup -79 = if drop ." SUBSTITUTE" exit then
+   -80 = if ." REPLACES" exit then ;
+variable last-word 1 cells allot drop
+variable number-handler ' do-number number-handler !
+: interpret parse-name 2dup last-word a! !+ !a
+   dup 0= if drop drop exit then over over find-word
+   dup 0= if drop number-handler @ execute [ tail-recurse, ]
+   then >r drop drop r> do-word [ tail-recurse, ] ;
+: <quit> tib dup input ! /tib
+   accept-input #input ! 0 >in ! interpret
+   79 emit 75 emit 10 emit [ tail-recurse, ] ;
+: quit [ clear-return-stack, ] <true> state ! <quit> ;
+: type-last last-word a! @+ @a a! dup 0> if
+   for c@+ upcase emit next exit then drop ;
+: show-error dup -13 = if drop type-last '?' emit cr exit 
+   then [show-error] '!' emit cr ;
+: abortx dup -1 = over -2 = or 0= if show-error then quit ;
 : bye [ HALT, ] ;
+quit
 
 \ forth              optional file word set             09-06-20
 0 macro fptrs 0 macro fopen 0 macro fclose
@@ -630,10 +754,9 @@ variable fsp 32 floats allot constant fstack
    dup 'd' = if drop true exit then
    dup 'E' = if drop true exit then
    'e' = if true exit then false ;
-: skip-e-form begin dup 0> while
-   over c@ ?e-form 0= if exit then next-char repeat ;
+: skip-e-char over c@ ?e-form 0= if exit then next-char ;
 : parse-exponent dup 0= if 1 exit then
-   skip-e-form parse-sign >r >number r> ;
+   skip-e-char parse-sign >r >number r> ;
 : **base base @ 0 ud>f fswap for fover f* next fswap fdrop ;
 : //base base @ 0 ud>f fswap for fover f/ next fswap fdrop ;
 : >float parse-significand 0= if false exit then
@@ -662,16 +785,7 @@ variable fsp 32 floats allot constant fstack
    if true r> drop exit then next false ;
 : do-floating >float if exit then -13 [ throw, ] ;
 : fdo-number 2dup ?has-e if do-floating exit then do-number ;
-: interpret parse-name
-   dup 0= if drop drop exit then over over find-word
-   dup 0= if drop fdo-number [ tail-recurse, ] then
-   >r drop drop r> do-word [ tail-recurse, ] ;
-: <quit> tib dup input ! /tib
-   accept-input #input ! 0 >in ! interpret
-   79 emit 75 emit 10 emit [ tail-recurse, ] ;
-: quit [ clear-return-stack, ] <true> state ! <quit> ;
-: abortx dup -1 = over -2 = or 0= if display-syserr then quit ;
-quit
+' fdo-number number-handler !
 
 \ forth              optional tools word set            09-06-20
 1 macro dump 1 macro see 1 macro words
