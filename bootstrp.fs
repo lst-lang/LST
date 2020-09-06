@@ -636,7 +636,7 @@ variable fsp 32 floats allot constant fstack
    skip-e-form parse-sign >r >number r> ;
 : **base base @ 0 ud>f fswap for fover f* next fswap fdrop ;
 : //base base @ 0 ud>f fswap for fover f/ next fswap fdrop ;
-: >float parse-significand 0= if exit then
+: >float parse-significand 0= if false exit then
    >r >r 0 0 r> r> parse-exponent
    >r 0> if r> 2drop 2drop false exit then
    2drop dup 0= if r> 2drop true exit then
@@ -657,6 +657,21 @@ variable fsp 32 floats allot constant fstack
 : represent fdup fdup f0< if fnegate then
    fdup floor significand >r dup frac>sig fround significand
    drop 2drop r> f0< true ;
+: ?has-e dup 0= if drop false exit then
+   swap a! for c@+ dup 'E' = swap 'e' = or
+   if true r> drop exit then next false ;
+: do-floating >float if exit then -13 [ throw, ] ;
+: fdo-number 2dup ?has-e if do-floating exit then do-number ;
+: interpret parse-name
+   dup 0= if drop drop exit then over over find-word
+   dup 0= if drop fdo-number [ tail-recurse, ] then
+   >r drop drop r> do-word [ tail-recurse, ] ;
+: <quit> tib dup input ! /tib
+   accept-input #input ! 0 >in ! interpret
+   79 emit 75 emit 10 emit [ tail-recurse, ] ;
+: quit [ clear-return-stack, ] <true> state ! <quit> ;
+: abortx dup -1 = over -2 = or 0= if display-syserr then quit ;
+quit
 
 \ forth              optional tools word set            09-06-20
 1 macro dump 1 macro see 1 macro words

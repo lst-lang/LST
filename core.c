@@ -260,10 +260,8 @@ macro_parse_digit (Cell c)
   digit = 0;
   if (c <= '9' && c >= '0')
     digit = c - '0';
-  else if (c <= 'Z' && c >= 'A')
-    digit = c - 'A' + 10;
   else
-    THROW (-13);
+    digit = c - 'A' + 10;
   return digit;
 }
 
@@ -278,7 +276,7 @@ macro_parse_number (Cell c_addr, Cell u)
   for (i = 0; i < u; i++)
     {
       digit = macro_parse_digit (buffer[i]);
-      if (digit >= sys.task.base)
+      if (digit < 0 || digit >= sys.task.base)
 	{
 	  THROW (-13);
 	}
