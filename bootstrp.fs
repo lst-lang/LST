@@ -225,7 +225,7 @@ quit
 : xor ?interp if [ xor, ] exit then xor, ; immediate
 : negate ?interp if [ negate, ] exit
    then negate, ; immediate
-: begin fill-nop, [ here ] literal @ ; immediate
+: begin fill-nop, here @ ; immediate
 : while 55 -1 slot-instruction, swap ; immediate
 : repeat 54 swap slot-instruction, drop
    fill-nop, here @ swap ! ; immediate
@@ -242,27 +242,20 @@ quit
    then 1 0 <<d->> invert swap invert swap ;
 : dabs dup 0< if dnegate then ;
 : d0= 0= swap 0= and ;
-: d< >r swap r> 2dup <
-   if 2drop 2drop 0 [ true, ] exit then u<
-   if 2drop 0 [ false, ] exit then u> ;
-: ud> >r swap r> 2dup u>
-   if 2drop 2drop 0 [ true, ] exit then u<
-   if 2drop 0 [ false, ] exit then u> ;
+: d< >r swap r> 2dup < if 2drop 2drop -1 exit then
+   u< if 2drop 0 exit then u> ;
+: ud> >r swap r> 2dup u> if 2drop 2drop -1 exit then
+   u< if 2drop 0 exit then u> ;
 : d- 2 pick 0 > 1 pick 0< and
    if dabs d+ exit then 2 pick 0< 1 pick 0 > and
    if dnegate 2swap d+ exit then 2 pick 0<
    1 pick 0< and if dabs 2swap dabs then
    2over 2over d< if 2swap <<d->> dnegate exit then <<d->> ;
-: highest 0 swap
-   begin dup [ lmb ] literal and 0=
-   while 2* swap 1+ swap
-   repeat drop [ cell-size ] literal 8 * swap - ;
-: d2* 2* over [ lmb ] literal and
-   if 1 or then swap 2* swap ;
-: d2/ swap u2/ over 1 and
-   if [ lmb ] literal or then swap 2/ ;
-: du2/ swap u2/ over 1 and
-   if [ lmb ] literal or then swap u2/ ;
+: highest 0 swap begin dup lmb and 0=
+   while 2* swap 1+ swap repeat drop 1 cells 8 * swap - ;
+: d2* 2* over lmb and if 1 or then swap 2* swap ;
+: d2/ swap u2/ over 1 and if lmb or then swap 2/ ;
+: du2/ swap u2/ over 1 and if lmb or then swap u2/ ;
 : /mod 2dup mod >r / r> ;
 : u/mod 2dup umod >r u/ r> ;
 : ud/ swap over u/mod swap >r 2* over
@@ -270,14 +263,12 @@ quit
    swap over u/mod r> + swap >r swap u/mod swap
    r> + r> + swap r> swap ;
 : d>c dup 9 > if 10 - 'A' + exit then '0' + ;
-: hold [ #pictured ] literal @ 0= if -17 [ throw, ]
-   then [ pictured ] literal [ #pictured ] literal
-   dup dec @ chars + c! exit ;
+: hold #pictured @ 0= if -17 [ throw, ]
+   then pictured #pictured dup dec @ chars + c! exit ;
 : depth ?interp if [ depth, ] exit then depth, ; immediate
-: # [ base ] literal @ ud/ d>c hold ;
-: <# [ /pictured ] literal [ #pictured ] literal ! ;
-: #> 2drop [ pictured ] literal [ #pictured ] literal @ +
-   [ /pictured ] literal [ #pictured ] literal @ - ;
+: # base @ ud/ d>c hold ;
+: <# /pictured #pictured ! ;
+: #> 2drop pictured #pictured @ + /pictured #pictured @ - ;
 : <#s> begin # 2dup d0= until ;
 : #s <# <#s> #> ;
 : 0> 0 > ;
@@ -304,12 +295,12 @@ quit
 : */ >r m* r> sm/rem swap drop ;
 : */mod >r m* r> sm/rem ;
 : +! >r r@ @ + r> ! ;
-: , [ cell-size ] literal allot ! ;
+: , 1 cells allot ! ;
 : fm/mod dup >r sm/rem over dup 0 <> swap 0< r@ 0<
    xor and if 1- swap r> + swap else r>drop then ;
 : <postpone> 57 swap slot-instruction, drop fill-nop, ;
 : postpone parse-name find-word dup 0=
-   if -13 [ throw, ] then dup [ entry-flag ] literal + @
+   if -13 [ throw, ] then dup entry-flag + @
    if 57 swap @code slot-instruction, drop fill-nop, exit
    then @code postpone literal 57 [ ' <postpone> @code ]
    literal slot-instruction, drop fill-nop, ; immediate
@@ -341,11 +332,9 @@ quit
 : dm* swap over m* >r >r m* r> or r> ;
 : >number begin dup 0> while
    over c@ dup ?digit over ?alpha or 0=
-   if drop exit
-   then parse-digit dup [ base ] literal @ >=
+   if drop exit then parse-digit dup base @ >=
    if drop exit then swap 1- >r swap char+ >r >r
-   [ base ] literal @ um* drop >r
-   [ base ] literal @ um* r> +
+   base @ um* drop >r base @ um* r> +
    r> 0 d+ r> r> repeat ;
 : ?dup dup if dup exit then ;
 : abort 10 emit -1 [ throw, ] ;
@@ -353,8 +342,8 @@ quit
 : abort" postpone s" postpone <abort"> ; immediate
 : abs dup 0< if negate then ;
 : align-number dup 1- invert >r + 1- r> and ;
-: aligned [ cell-size ] literal align-number ;
-: c, [ char-size ] literal allot c! ;
+: aligned 1 cells align-number ;
+: c, 1 chars allot c! ;
 : char parse-name drop c@ ;
 : <constant> ?interp 0= if postpone literal then ;
 : constant >r 32 word count begin,
@@ -368,10 +357,8 @@ input constant input #input constant #input in constant >in
 <false> constant false
 : fill over dup 0> if swap >r swap r>
    for 2dup c! char+ next then 2drop ;
-: find dup count find-word dup 0=
-   if exit then swap drop
-   dup [ entry-flag ] literal + @ dup 0=
-   if 1- then ;
+: find dup count find-word dup 0= if exit then
+   swap drop dup entry-flag + @ dup 0= if 1- then ;
 here constant here
 : align here @ aligned here ! ;
 : lshift dup if for 2* next exit then drop ;
@@ -415,27 +402,27 @@ variable created 0 created !
 : create parse-name begin, 53 -1 slot-instruction,
    54 ['] nop @code slot-instruction, created !
    fill-nop, ret, swap dup >r end, align here @ dup
-   r> [ entry-parameter ] literal + ! swap ! ;
+   r> entry-parameter + ! swap ! ;
 : [does>] created @ dup 0= if drop exit then
    r> swap ! 0 created ! ;
-: does> ?interp if -14 [ throw, ] then
-   postpone [does>] ; immediate
-: >body [ entry-parameter ] literal + @ ;
+: does> ?interp if -14 [ throw, ]
+   then postpone [does>] ; immediate
+: >body entry-parameter + @ ;
 : environment?
    2dup s" /COUNTED-STRING" compare 0=
    if 2drop 255 true exit then
    2dup s" /HOLD" compare 0=
-   if 2drop [ /pictured ] literal true exit then
+   if 2drop /pictured true exit then
    2dup s" /PAD" compare 0=
-   if 2drop [ /pad ] literal true exit then
+   if 2drop /pad true exit then
    2dup s" ADDRESS-UNIT-BITS" compare 0=
    if 2drop 8 true exit then
    2dup s" FLOORED" compare 0= if 2drop 0 true exit then
    2dup s" MAX-CHAR" compare 0= if 2drop 255 true exit then
    2dup s" MAX-D" compare 0=
-   if 2drop -1 -1 [ lmb ] literal invert and true exit then
+   if 2drop -1 -1 lmb invert and true exit then
    2dup s" MAX-N" compare 0=
-   if 2drop -1 [ lmb ] literal invert and true exit then
+   if 2drop -1 lmb invert and true exit then
    2dup s" MAX-U" compare 0= if 2drop -1 true exit then
    2dup s" MAX-UD" compare 0= if 2drop -1 -1 true exit then
    2dup s" RETURN-STACK-CELLS" compare 0=
@@ -481,8 +468,6 @@ updated-buffers 4 cells erase
    #input @ >r blk @ >r >r ;
 : restore-inputs r> r> blk ! r> #input !
    r> input ! r> >in ! >r ;
-: evaluate save-inputs #input ! input !
-   0 >in ! 0 blk ! interpret restore-inputs ;
 : save-buffers 4 for r@ 1- dup update
    updated-buffer false swap ! next ;
 : flush save-buffers
@@ -490,9 +475,6 @@ updated-buffers 4 cells erase
 : unassign 4 for dup r@ 1- assigned-block @ =
    if r> 1- assigned-block 0 swap ! drop exit then
    next ;
-: load save-inputs dup blk ! 1024 #input !
-   0 >in ! block input ! interpret
-   blk @ unassign restore-inputs ;
 : update true current-buffer @ updated-buffer ! ;
 : [search] - dup >r for 2dup >r >r >r >r
    over r> r> swap over compare
@@ -599,6 +581,11 @@ variable number-handler ' do-number number-handler !
    dup 0= if drop drop exit then over over find-word
    dup 0= if drop number-handler @ execute [ tail-recurse, ]
    then >r drop drop r> do-word [ tail-recurse, ] ;
+: evaluate save-inputs #input ! input !
+   0 >in ! 0 blk ! interpret restore-inputs ;
+: load save-inputs dup blk ! 1024 #input !
+   0 >in ! block input ! interpret
+   blk @ unassign restore-inputs ;
 : <quit> tib dup input ! /tib
    accept-input #input ! 0 >in ! interpret
    79 emit 75 emit 10 emit [ tail-recurse, ] ;
