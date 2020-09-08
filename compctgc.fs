@@ -1,8 +1,8 @@
-\ lst              title                                05-28-20
-\ name: lst
+\ gc               title                                09-08-20
+\ name: compact garbage collector
 \ release: 0.01
 \ author: lst-lang <coldmoon@mailfence.com>
-\ license: gnu gpl 3.0 or later
+\ license: GNU GPL 3.0 or later
 
 
 
@@ -14,471 +14,7 @@
 
 
 
-\ lst              load#1                               05-28-20
-: thru do i dup . load loop ;
-45 30 thru
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              load#2                               05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              load#3                               05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              system messages#1                    05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              system messages#2                    05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              system messages#3                    05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              system messages#4                    05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              system messages#5                    05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              system messages#6                    05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#1                          05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#2                          05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#3                          05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#4                          05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#5                          05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#6                          05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#7                          05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#8                          05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#9                          05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#10                         05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#11                         05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#12                         05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#13                         05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#14                         05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#15                         05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#16                         05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#17                         05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#18                         05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#19                         05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              utilities#20                         05-28-20
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\ lst              template#1                           05-28-20
+\ gc               template#1                           09-08-20
 : field-offset nop ;
 : field-template [ 0 field-offset cell+ ] literal + ;
 : template-field [ 0 field-template cell+ ] literal ;
@@ -494,7 +30,7 @@
 : element-number [ 0 element-size cell+ ] literal + ;
 : template-array [ 0 element-number cell+ ] literal ;
 
-\ lst              template#2                           05-28-20
+\ gc               template#2                           09-08-20
 : record-fields [ 0 template-kind cell+ ] literal + ;
 : template-record ( fields -- size )
    template-field * [ 0 record-fields cell+ ] literal + ;
@@ -510,7 +46,7 @@
 
 
 
-\ lst              frame                                05-28-20
+\ gc               frame                                09-08-20
 : sframe-template nop ;
 : sframe-sp [ 0 sframe-template cell+ ] literal + ;
 : sframe-fp [ 0 sframe-sp cell+ ] literal + ;
@@ -526,7 +62,7 @@
 
 
 
-\ lst              bitmap#1                             05-28-20
+\ gc               bitmap#1                             09-08-20
 1 cells 8 * constant cell-bits
 1 chars 8 * constant char-bits
 
@@ -542,7 +78,7 @@
 : bit@ ( map offset -- ) make-mask swap @ and 0= 1+ ;
 
 
-\ lst              bitmap#2                             05-28-20
+\ gc               bitmap#2                             09-08-20
 : split ( lhalf size -- lhalf whole rhalf )
    over cell-bits swap - - cell-bits /mod ;
 : make-mask ( n -- 111...000... ) 0 invert swap for 2* next ;
@@ -558,7 +94,7 @@
 
 
 
-\ lst              bitmap#3                             05-28-20
+\ gc               bitmap#3                             09-08-20
 : [type-bits] ( x bits -- )
    dup 0= if 2drop exit then
    for dup 1 and . u2/ next drop ;
@@ -574,7 +110,7 @@
 
 
 
-\ lst              registers & stack                    05-28-20
+\ gc               registers & stack                    09-08-20
 variable sp 128 cells allot drop sp cell+ sp !
 variable fp sp cell+ fp !
 
@@ -590,7 +126,7 @@ variable fp sp cell+ fp !
 
 
 
-\ lst              storage                              05-28-20
+\ gc               storage                              09-08-20
 variable up 1600 cells allot drop up cell+ up !
 1600 make-bitmap constant map map 1600 clear-bitmap
 
@@ -606,7 +142,7 @@ variable up 1600 cells allot drop up cell+ up !
    update-freep 2dup swap - r@ = if drop dup r> cell/-set
    1+ cells up + exit then repeat 2drop 0 ;
 
-\ lst              mark phase#1                         05-28-20
+\ gc               mark phase#1                         09-08-20
 variable msp 128 cells allot drop msp cell+ msp !
 
 : top-markstack ( -- addr )
@@ -622,7 +158,7 @@ variable msp 128 cells allot drop msp cell+ msp !
 
 
 
-\ lst              mark phase#2                         05-28-20
+\ gc               mark phase#2                         09-08-20
 : putback-frame ( markstack-frame -- )
    enter-markstack >r a!
    @+ !r @+ @+ swap over + !r !r @+ 1- !r @+ !r ;
@@ -638,7 +174,7 @@ variable msp 128 cells allot drop msp cell+ msp !
 
 
 
-\ lst              mark phase#3                         05-28-20
+\ gc               mark phase#3                         09-08-20
 : [mark-field] ( markstack-frame -- )
    dup msframe-number @ 1- if putback-fieldframe then
    dup r@ msframe-object @ swap msframe-template @
@@ -654,7 +190,7 @@ variable msp 128 cells allot drop msp cell+ msp !
 
 
 
-\ lst              mark phase#4                         05-28-20
+\ gc               mark phase#4                         09-08-20
 : mark-pointer ( markstack-frame -- )
    dup msframe-number @ 1- if putback-frame then
    swap msframe-object @ dup ?marked if 2drop exit then
@@ -670,7 +206,7 @@ variable msp 128 cells allot drop msp cell+ msp !
 
 
 
-\ lst              mark phase#5                         05-28-20
+\ gc               mark phase#5                         09-08-20
 : mark-record ( markstack-frame -- )
    dup msframe-isfield @
    if [mark-field] exit then [mark-record] ;
@@ -686,7 +222,7 @@ variable msp 128 cells allot drop msp cell+ msp !
 
 
 
-\ lst              mark phase#6                         05-28-20
+\ gc               mark phase#6                         09-08-20
 variable mark-x 3 cells allot drop
 mark-x a! ' mark-pointer !+ ' mark-array !+
 ' mark-record !+ ' mark-tagfield !a
