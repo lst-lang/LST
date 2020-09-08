@@ -168,25 +168,25 @@ macro_f_store (Cell r, Cell f_addr)
 Cell
 macro_f_star (Cell r1, Cell r2)
 {
-  return (Cell ) (*(Floating *) A (r2) *= *(Floating *) A (r1));
+  return (Cell) (*(Floating *) A (r2) *= *(Floating *) A (r1));
 }
 
 Cell
 macro_f_plus (Cell r1, Cell r2)
 {
-  return (Cell ) (*(Floating *) A (r2) += *(Floating *) A (r1));
+  return (Cell) (*(Floating *) A (r2) += *(Floating *) A (r1));
 }
 
 Cell
 macro_f_minus (Cell r1, Cell r2)
 {
-  return (Cell ) (*(Floating *) A (r2) -= *(Floating *) A (r1));
+  return (Cell) (*(Floating *) A (r2) -= *(Floating *) A (r1));
 }
 
 Cell
 macro_f_slash (Cell r1, Cell r2)
 {
-  return (Cell ) (*(Floating *) A (r2) /= *(Floating *) A (r1));
+  return (Cell) (*(Floating *) A (r2) /= *(Floating *) A (r1));
 }
 
 Cell
