@@ -273,8 +273,9 @@ quit
 : #s <# <#s> #> ;
 : 0> 0 > ;
 : type swap a! dup 0> if for c@+ emit next exit then drop ;
+: space 32 emit ;
 : d. dup 0< dup >r if dnegate then
-   <# <#s> r> if '-' hold then #> type 32 emit ;
+   <# <#s> r> if '-' hold then #> type space ;
 : . dup 0< if -1 else 0 then d. ;
 : ' parse-name find-word dup 0= if -13 [ throw, ] then ;
 : ( ')' find-delimiter incin drop ; immediate
@@ -337,8 +338,9 @@ quit
    base @ um* drop >r base @ um* r> +
    r> 0 d+ r> r> repeat ;
 : ?dup dup if dup exit then ;
-: abort 10 emit -1 [ throw, ] ;
-: <abort"> type 10 emit -2 [ throw, ] ;
+: cr 10 emit ;
+: abort cr -1 [ throw, ] ;
+: <abort"> type cr -2 [ throw, ] ;
 : abort" postpone s" postpone <abort"> ; immediate
 : abs dup 0< if negate then ;
 : align-number dup 1- invert >r + 1- r> and ;
@@ -350,7 +352,6 @@ quit
    53 r> slot-instruction, drop
    postpone <constant> ret, end, immediate ;
 base constant base 32 constant bl
-: cr 10 emit ;
 : decimal 10 base ! ;
 input constant input #input constant #input in constant >in
 : execute @code >r [ ex, fill-nop, ] ;
@@ -362,15 +363,14 @@ input constant input #input constant #input in constant >in
 here constant here
 : align here @ aligned here ! ;
 : lshift dup if for 2* next exit then drop ;
-: quit 10 emit quit ;
+: quit cr quit ;
 : rshift dup if for 2/ next exit then drop ;
 : s>d dup 0< if -1 else 0 then ;
 : sign 0< if '-' hold then ;
 : source input @ #input @ ;
-: space 32 emit ;
-: spaces dup 0> if for 32 emit next exit then drop ;
+: spaces dup 0> if for space next exit then drop ;
 <true> constant true
-: ud. <# <#s> #> type 32 emit ;
+: ud. <# <#s> #> type space ;
 : u. 0 ud. ;
 : [variable] 32 word count
    begin, 53 0 slot-instruction, >r
@@ -586,9 +586,8 @@ variable number-handler ' do-number number-handler !
 : load save-inputs dup blk ! 1024 #input !
    0 >in ! block input ! interpret
    blk @ unassign restore-inputs ;
-: <quit> tib dup input ! /tib
-   accept-input #input ! 0 >in ! interpret
-   79 emit 75 emit 10 emit [ tail-recurse, ] ;
+: <quit> tib dup input ! /tib accept-input #input ! 0 >in !
+   interpret ." OK" cr [ tail-recurse, ] ;
 : quit [ clear-return-stack, ] <true> state ! <quit> ;
 : type-last last-word a! @+ @a a! dup 0> if
    for c@+ upcase emit next exit then drop ;
