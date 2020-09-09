@@ -83,27 +83,27 @@
    over cell-bits swap - - cell-bits /mod ;
 : make-mask ( n -- 111...000... ) 0 invert swap for 2* next ;
 : or-mask! ( mask addr -- ) swap over @ or swap ! ;
+: set-cells ( addr1 cells -- addr2 )
+   dup 0= if drop exit then
+   swap a! 0 invert swap for dup !+ next drop a ;
 : [bits-set] ( map offset size -- )
    split >r >r make-mask over or-mask!
-   cell+ a! 0 invert r> for dup !+ next drop a
-   r> make-mask invert swap or-mask! ;
+   cell+ r> set-cells r> make-mask invert swap or-mask! ;
 : bits-set ( map offset size -- )
-   dup 2 cell-bits * > if [bits-set] exit then
+   2dup + cell-bits > if [bits-set] exit then
    for 2dup bit-set 1+ next 2drop ;
-
-
 
 
 \ gc               bitmap#3                             09-08-20
 : [type-bits] ( x bits -- )
    dup 0= if 2drop exit then
    for dup 1 and . u2/ next drop ;
-: <type-bits> ( cells -- )
+: <type-bits> ( addr cells -- )
    dup 0= if drop exit then
-   for @+ cell-bits [type-bits] next ;
+   for dup @ cell-bits [type-bits] cell+ next ;
 : type-bits ( map bits -- )
-   cell-bits /mod >r swap a!
-   <type-bits> @+ r> [type-bits] ;
+   cell-bits /mod >r <type-bits> @ r> [type-bits] ;
+
 
 
 
@@ -127,114 +127,20 @@ variable fp sp cell+ fp !
 
 
 \ gc               storage                              09-08-20
-variable up 1600 cells allot drop up cell+ up !
+1600 cells allot constant storage
 1600 make-bitmap constant map map 1600 clear-bitmap
 
-: cell/ ( addr -- ) 1 cells / ;
-: cell/-set ( addr size -- )
-   cell/ >r map swap cell/ bits+ r> bits-set ;
-: ?set ( addr -- ) map swap cell/ bits+ bit@ ;
-: cell-round ( bytes -- cells ) 1 cells /mod 0> if 1+ then ;
+: set-map ( addr size -- ) >r map swap bits+ r> bits-set ;
+: ?set ( addr -- ) map swap 1 cells / bits+ bit@ ;
+: units>cells ( units -- cells ) 1 cells /mod 0> if 1+ then ;
 : update-freep ( freep1 currp1 -- freep2 currp2 )
-   map over bits+ bit@ if swap drop dup then ;
+   map over bits+ bit@ if swap drop dup then
+   cr 2dup swap ." curr:" . ." free:" . ;
 : more-units ( size -- addr )
-   cell-round >r 0 dup begin dup 1600 < while
-   update-freep 2dup swap - r@ = if drop dup r> cell/-set
-   1+ cells up + exit then repeat 2drop 0 ;
-
-\ gc               mark phase#1                         09-08-20
-variable msp 128 cells allot drop msp cell+ msp !
-
-: top-markstack ( -- addr )
-   msp @ markstack-frame - dup msp cell+ <
-   abort" MARK STACK UNDERFLOW" ;
-: enter-markstack ( -- addr )
-   msp @ dup markstack-frame + dup msp 129 cells + >
-   abort" MARK STACK OVERFLOW" msp ! ! ;
-: out-markstack ( -- x ) top-markstack dup msp ! @ ;
-: ?mark-stack ( -- flag ) msp @ msp cell+ > ;
+   units>cells 1+ >r 0 dup begin dup 1600 < while
+   update-freep 2dup swap - r@ = if drop dup r> set-map
+   cells storage + exit then 1+ repeat 2drop 0 ;
 
 
 
-
-
-\ gc               mark phase#2                         09-08-20
-: putback-frame ( markstack-frame -- )
-   enter-markstack >r a!
-   @+ !r @+ @+ swap over + !r !r @+ 1- !r @+ !r ;
-: putback-fieldframe ( markstack-frame -- )
-   enter-markstack >r a!
-   @+ template-field + !r @+ !r @+ !r @+ 1- !r @+ !r ;
-: ?marked ( addr -- flag )
-   dup nil = if drop true exit then
-   cell/ ?set if true exit then false ;
-: set-object ( template pointer -- )
-   swap object-size @ swap cell/-set ;
-
-
-
-
-\ gc               mark phase#3                         09-08-20
-: [mark-field] ( markstack-frame -- )
-   dup msframe-number @ 1- if putback-fieldframe then
-   dup r@ msframe-object @ swap msframe-template @
-   enter-markstack >r dup field-template @ !r
-   field-offset @ + !r 0 !r 1 !r 0 !r r> drop ;
-: [mark-record] ( markstack-frame -- )
-   dup msframe-number @ 1- if putback-frame then
-   enter-markstack >r a! @+ record-fields cell+ !r
-   @+ !r @+ !r @a !r 1 !r r> drop ;
-
-
-
-
-
-
-\ gc               mark phase#4                         09-08-20
-: mark-pointer ( markstack-frame -- )
-   dup msframe-number @ 1- if putback-frame then
-   swap msframe-object @ dup ?marked if 2drop exit then
-   2dup set-object enter-markstack >r
-   over !r !r object-size @ !r 1 !r 0 !r r> drop ;
-: mark-array ( markstack-frame -- )
-   dup msframe-number @ 1- if putback-frame then
-   swap msframe-object @ enter-markstack >r
-   over element-template @ !r !r dup element-size @ !r
-   element-number !r 0 !r r> drop ;
-
-
-
-
-
-\ gc               mark phase#5                         09-08-20
-: mark-record ( markstack-frame -- )
-   dup msframe-isfield @
-   if [mark-field] exit then [mark-record] ;
-: mark-tagfield ( markstack-frame -- )
-   dup msframe-number @ 1- if putback-frame then
-   tagfield-variants cell+ swap msframe-object @
-   swap over @ cells + @ enter-markstack r>
-   !r cell+ !r 0 !r 1 !r r> drop ;
-
-
-
-
-
-
-
-\ gc               mark phase#6                         09-08-20
-variable mark-x 3 cells allot drop
-mark-x a! ' mark-pointer !+ ' mark-array !+
-' mark-record !+ ' mark-tagfield !a
-
-: do-mark-x ( markstack-frame )
-   dup msframe-template @ template-kind @
-   dup 3 > if 2drop exit then cells mark-x + @ execute ;
-: mark-frame ( fp -- old-fp )
-   out-markstack >r dup stack-frame - sframe-template @
-   !r !r 0 !r 1 !r r> drop
-   begin ?mark-stack while top-markstack do-mark-x repeat ;
-: mark ( -- )
-   fp @ begin dup sp cell+ <> while mark-frame repeat ;
-
-
+\ gc               storage                              09-08-20
