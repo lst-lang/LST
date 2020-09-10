@@ -19,7 +19,7 @@
 #define STACK_SIZE 64
 #define BUFFER_SIZE 128
 #define ENTRY_NAME_SIZE 32
-#define DICTIONARY_SIZE 64000
+#define DICTIONARY_SIZE 128000
 
 #define ADDRESS_OF(o) (((Byte *) &sys) + (o))
 #define A(o) ADDRESS_OF (o)
