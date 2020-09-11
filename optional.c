@@ -402,8 +402,7 @@ macro_words (void)
 Cell
 macro_int_dot (Cell n)
 {
-  printf ("%d:%u ", (int) n, (unsigned) n);
-  return fflush (stdout);
+  return printf ("%d:%u ", (int) n, (unsigned) n);
 }
 
 Cell
@@ -414,8 +413,7 @@ macro_long_dot (Cell low, Cell high)
   d = (unsigned) high;
   d <<= sizeof (int) * 8;
   d |= (unsigned) low;
-  printf ("%ld:%lu ", d, d);
-  return fflush (stdout);
+  return printf ("%ld:%lu ", d, d);
 }
 
 Cell

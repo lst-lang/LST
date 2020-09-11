@@ -107,7 +107,6 @@ macro_accept (Cell c_addr, Cell u)
   Character c, *string;
   Cell length;
 
-  fflush (stdout);
   string = (Character *) A (c_addr);
   for (length = 0; length < u; length++)
     if ((c = getchar ()) != '\n')
@@ -330,7 +329,6 @@ macro_store_block (Cell b, Cell u)
 Cell
 macro_key (void)
 {
-  fflush (stdout);
   return getchar ();
 }
 
