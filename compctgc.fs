@@ -52,12 +52,12 @@
 : sframe-fp [ 0 sframe-sp cell+ ] literal + ;
 : stack-frame [ 0 sframe-fp cell+ ] literal ;
 
-: msframe-template nop ;
-: msframe-object [ 0 msframe-template cell+ ] literal + ;
-: msframe-size [ 0 msframe-object cell+ ] literal + ;
-: msframe-number [ 0 msframe-size cell+ ] literal + ;
-: msframe-kind [ 0 msframe-number cell+ ] literal + ;
-: markstack-frame [ 0 msframe-kind cell+ ] literal ;
+: mframe-kind nop ;
+: mframe-template [ 0 mframe-kind cell+ ] literal + ;
+: mframe-object [ 0 mframe-template cell+ ] literal + ;
+: mframe-number [ 0 mframe-object cell+ ] literal + ;
+: mark-frame [ 0 mframe-number cell+ ] literal ;
+
 
 
 
@@ -111,7 +111,7 @@
 
 
 \ gc               registers & stack                    09-08-20
-variable sp 128 cells allot drop sp cell+ sp !
+variable sp 128 cells allot dup sp ! constant stack
 variable fp sp cell+ fp !
 
 : enter-stack ( size -- addr )
@@ -126,21 +126,179 @@ variable fp sp cell+ fp !
 
 
 
-\ gc               storage                              09-08-20
-1600 cells allot constant storage
-1600 make-bitmap constant map map 1600 clear-bitmap
+\ gc               storage#1                            09-10-20
+800 make-bitmap constant map
 
-: set-map ( addr size -- ) >r map swap bits+ r> bits-set ;
-: ?set ( addr -- ) map swap 1 cells / bits+ bit@ ;
-: units>cells ( units -- cells ) 1 cells /mod 0> if 1+ then ;
+: clear-map ( -- ) map 800 clear-bitmap ;
+: set-map ( offset size -- ) >r map swap bits+ r> bits-set ;
+: ?set-map ( offset -- flag ) map swap bits+ bit@ ;
+
+: parcels 2 cells * ;
+800 parcels allot constant storage
+
+: units>parcels ( units -- parcels )
+   1 parcels /mod 0> if 1+ then ;
+
+
+
+
+\ gc               storage#2                            09-10-20
+: forward-1bit ( freep1 currp1 -- freep2 currp2 )
+   1+ map over bits+ bit@ if swap drop dup then ;
+: forward-cells ( freep1 currp1 cells -- freep2 currp2 )
+   cells map + @ dup 0= if drop cell-bits + exit then invert 0=
+   if cell-bits + swap drop dup exit then forward-1bit ;
 : update-freep ( freep1 currp1 -- freep2 currp2 )
-   map over bits+ bit@ if swap drop dup then
-   cr 2dup swap ." curr:" . ." free:" . ;
+   dup cell-bits /mod 0= if forward-cells exit
+   then drop forward-1bit ;
 : more-units ( size -- addr )
-   units>cells 1+ >r 0 dup begin dup 1600 < while
-   update-freep 2dup swap - r@ = if drop dup r> set-map
-   cells storage + exit then 1+ repeat 2drop 0 ;
+   units>parcels 1+ >r 0 dup begin dup 800 < while
+   update-freep 2dup swap - r@ > if drop dup r> set-map
+   parcels storage + exit then repeat r> drop 2drop 0 ;
 
 
 
-\ gc               storage                              09-08-20
+\ gc               mark phase#1                         09-10-20
+: enter-mark ( -- addr ) mark-frame enter-stack ;
+: out-mark ( -- addr ) mark-frame out-stack ;
+: push-stack ( -- ) enter-mark a! 0 !+ -1 !+ fp @ !+ -1 !+ ;
+: push-pointer ( template addr -- )
+   over object-size + @ over swap set-map
+   swap object-template + @ enter-mark a! -1 !+ !+ !+ -1 !a ;
+: push-array ( template addr -- )
+   over dup element-number + @ >r element-size + @ r@ *
+   swap set-map swap enter-mark a! -2 !+ !+ !+ r> !a ;
+: push-record ( template addr -- )
+   swap dup record-fields + @
+   enter-mark a! -3 !+ >r !+ !+ r> !a ;
+: push-tagfield ( template addr -- )
+   swap cells + @ enter-mark a! -4 !+ !+ !+ -1 !a ;
+
+\ gc               mark phase#2                         09-10-20
+: push-object ( template addr -- )
+   dup @ if 2drop exit then over template-kind @
+   dup -1 = if drop push-pointer exit then
+   dup -2 = if drop push-array exit then
+   dup -3 = if drop push-record exit then
+   -4 = if push-tagfield exit then ;
+: pop-object ( markframe -- object template number )
+   mframe-template + a! @+ @+ swap @a 1- dup 0= 0=
+   if 1- !a enter-mark then drop ;
+
+
+
+
+
+
+\ gc               mark phase#3                         09-10-20
+: mark-pointer ( markframe -- )
+   mframe-template + a! @+ @a
+   >r object-template + @ r> @ push-object ;
+: mark-array ( markframe -- )
+   pop-object over element-size + @ * swap element-template + @
+   >r + r> swap push-object ;
+: mark-record ( markframe -- )
+   pop-object template-field * + dup field-template + @
+   >r field-offset + @ + r> push-object ;
+: mark-stack ( markframe -- )
+   mframe-object + a! @a dup 0= 0=
+   if dup !a enter-mark then stack + dup @ swap stack-frame +
+   push-object ;
+
+
+\ gc               mark phase#3                         09-10-20
+: mark-object ( -- ) out-mark dup @
+   dup 0 = if drop mark-stack exit then
+   dup -1 = if drop mark-pointer exit then
+   dup -2 = if drop mark-array exit then
+   -3 = if mark-record then ;
+: mark ( -- ) clear-map push-stack sp @
+   begin sp @ = 0= while mark-object repeat ;
+
+
+
+
+
+
+
+
+\ gc               compaction#1                         09-11-20
+variable break-table 0 break-table !
+variable break-entrys 0 break-entrys !
+variable break-point 1 cells allot drop 0 break-point !
+
+: current-entry ( -- addr )
+   break-table @ break-entrys @ parcels + ;
+: append-point ( -- )
+   break-point a! @+ @a current-entry a! dup !+ swap - !a
+   break-entrys a! @a 1+ !a ;
+: add-entry ( currp -- )
+   break-table a! @a 0= if 1- parcels storage + !a
+   append-point exit then drop append-point ;
+: save-point ( newp currp -- ) swap break-point a! !+ !a ;
+
+
+\ gc               compaction#2                         09-11-20
+: before-table ( -- size )
+   break-table @ storage - break-point @ parcels - ;
+: move-size ( newp -- size ) parcels break-point @ parcels - ;
+: ?no-space ( newp -- flag ) before-table swap move-size < ;
+: ?need-roll ( newp -- flag )
+   break-table @ 0= if drop false exit then ?no-space ;
+: roll-entry ( end1 -- end2 )
+   1 parcels - >r break-table @ a! @+ @+ a break-table !
+   swap r@ a! !+ !a r> ;
+: roll-table ( end1 -- end2 )
+   dup current-entry - 1 parcels / for roll-entry next ;
+: move-partial ( from1 to1 size -- from2 to2 )
+   >r 2dup r@ 1 cells / move r@ + swap r> + swap ;
+
+
+\ gc               compaction#3                         09-11-20
+: [rolling-move]  ( from1 to1 size1 -- from2 to2 size2 )
+   >r >r dup roll-table over swap - r> swap
+   dup r> swap - >r move-partial r> ;
+: rolling-move ( from to size -- )
+   begin dup 0 > while [rolling-move] repeat ;
+: new-position ( -- addr ) @+ parcels storage + ;
+: old-position ( -- addr ) @a parcels storage + ;
+: move-parcels ( newp -- )
+   >r break-point a! new-position old-position swap
+   r@ move-size r> ?need-roll
+   if rolling-move exit then 1 cells / move ;
+
+
+
+
+\ gc               compaction#5                         09-11-20
+: on-break ( newp currp -- )
+   break-point @ 0= if save-point exit then
+   over move-parcels dup add-entry save-point ;
+: check-point ( newp currp -- )
+   dup 0= if 2drop exit then
+   dup 1- ?set-map if 2drop exit then on-break ;
+: forward-1bit ( newp1 currp1 -- newp2 currp2 )
+   dup ?set-map 0= if 1+ exit then
+   2dup check-point swap 1+ swap 1+ ;
+: forward-1cell ( newp1 currp1 addr -- newp2 currp2 )
+   a! @a 0= if cell-bits + exit then
+   @a invert 0= 0= if forward-1bit exit then
+   2dup check-point swap cell-bits + swap cell-bits + ;
+
+
+\ gc               compaction#6                         09-11-20
+: step ( newp1 currp2 -- newp2 currp2 )
+   dup cell-bits /mod if drop forward-1bit exit then
+   cells map + forward-1cell ;
+: compact ( -- )
+   0 0 begin dup 800 < while step repeat on-break ;
+
+
+
+
+
+
+
+
+
+
