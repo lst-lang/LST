@@ -144,7 +144,7 @@ variable free variable current
 
 
 \ gc               storage#1                            09-13-20
-: round-units 1 parcels /mod 0> if 1+ then parcels ;
+: round-units 1 parcels /mod 0> if 1+ then ;
 : storage-map 'storage-map 'this-bitmap ! ;
 : set-pointers storage dup free ! dup current ! ;
 : ?end-of-map current @ storage - 800 parcels < 0= ;
