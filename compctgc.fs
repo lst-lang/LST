@@ -110,3 +110,51 @@ variable left-bits variable middle-cells variable right-bits
 
 
 
+\ gc               registers & stack                    09-13-20
+variable sp 128 cells allot dup sp ! constant stack
+variable fp sp cell+ fp !
+
+: ?overflow @a over + a cell+ 128 cells + > ;
+: enter-stack sp a! ?overflow
+   if abort" STACK OVERFLOW" then @a + !a ;
+
+: ?underflow @a over - a cell+ < ;
+: out-stack sp a! ?underflow
+   if abort" STACK UNDERFLOW" then @a swap - !a ;
+
+
+
+
+
+\ gc               storage#1                            09-13-20
+: parcels 2 cells * ;
+800 parcels allot constant storage
+800 bits bitmap constant 'storage-map
+variable free variable current
+
+: ?on-cell-bound current @ storage - cell-bits /mod 0= ;
+: step-both free a! @a over + !+ @a + !a ;
+: step-current current a! @a + !a ;
+: walk-bit current @ bits+ @bit
+   if 1 step-both exit then 1 step-current ;
+: walk-cell current @ @
+   dup 0= if drop cell-bits step-current exit then
+   invert 0= if cell-bits step-both exit then walk-bit ;
+
+
+
+\ gc               storage#1                            09-13-20
+: round-units 1 parcels /mod 0> if 1+ then parcels ;
+: storage-map 'storage-map 'this-bitmap ! ;
+: set-pointers storage dup free ! dup current ! ;
+: ?end-of-map current @ storage - 800 parcels < 0= ;
+: ?found-enough current @ free @ - over swap < 0= ;
+: ?walk ?end-of-map if false exit then ?found-enough ;
+: update-pointers ?on-cell-bound
+   if walk-cell exit then drop walk-bit ;
+: walk-map begin ?walk 0= while update-pointers repeat ;
+: search-empty set-pointers walk-map ;
+: more-units round-units storage-map search-empty ;
+
+
+
