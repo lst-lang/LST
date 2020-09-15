@@ -14,38 +14,6 @@
 
 
 
-\ gc               template#1                           09-14-20
-variable 'this-template 0 'this-template !
-
-: this-template 'this-template @ ;
-: template-kind this-template ;
-: template-copying this-template 1 cells + ;
-: /pointer 4 cells ;
-: object-template this-template 1 cells + ;
-: object-size this-template 2 cells + ;
-: /array 5 cells ;
-: element-template this-template 1 cells + ;
-: element-size this-template 2 cells + ;
-: element-number this-template 3 cells + ;
-
-
-
-\ gc               template#2                           09-14-20
-: record 3 cells + ;
-: record-fields this-template 1 cells + ;
-: tagfield 3 cells + ;
-: tagfield-variants this-template 1 cells + ;
-: /field 2 cells ;
-: fields /field * ;
-: field-offset fields this-template record-fields + ;
-: field-template field-offset cell+ ;
-
-
-
-
-
-
-
 \ gc               bitmap#1                             09-13-20
 1 cells 8 * constant cell-bits
 variable 'this-bitmap 0 'this-bitmap !
@@ -126,38 +94,6 @@ variable 'this-frame 0 'this-frame !
 
 
 
-\ gc               mark stack#1                         09-14-20
-variable mp stack /stack + mp !
-variable 'this-mark 0 'this-frame !
-
-: this-mark 'this-mark @ ;
-: /mark 4 cells ;
-: mark-template this-mark ;
-: mark-object this-mark /mark + ;
-: mark-recurse this-mark /mark + ;
-: current-mark mp @ 'this-mark ! ;
-
-
-
-
-
-
-\ gc               mark stack#2                         09-14-20
-: top mp a! @a /mark ;
-: ?overflow sp @ top - > ;
-: overflow true abort" MARK STACK OVERFLOW" ;
-: decrease-mp /mark decrease-sp ;
-: enter-mark ?overflow if overflow then decrease-mp ;
-: ?underflow top + stack /stack + > ;
-: underflow true abort" MARK STACK UNDERFLOW" ;
-: increase-mp /mark increase-sp ;
-: leave-mark ?underflow if underflow then increase-mp ;
-: ?has-mark mp @ stack /stack + < ;
-
-
-
-
-
 \ gc               storage#1                            09-13-20
 : parcels 2 cells * ;
 800 parcels constant /storage
@@ -200,7 +136,153 @@ variable free 1 cells allot constant current
 : walk-map begin ?walk while update-pointers repeat ;
 : no-memory true abort" NOT ENOUGH MEMORY" ;
 : check-result ?found-enough if free @ exit then no-memory ;
-: parcels-offset parcels storage + ;
-: set-map >r r@ bits+ swap set-bits r> parcels-offset ;
+: set-map >r r@ bits+ swap set-bits r> parcels storage + ;
 : search-empty set-pointers walk-map check-result set-map ;
 : allocate-units round-units storage-map search-empty ;
+
+
+
+\ gc               mark stack#1                         09-14-20
+variable mp stack /stack + mp !
+variable 'this-mark 0 'this-frame !
+
+: this-mark 'this-mark @ ;
+: /mark 3 cells ;
+: marking-template this-mark ;
+: marking-locals this-mark 1 cells + ;
+: marking-recurse this-mark 2 cells + ;
+: current-mark mp @ 'this-mark ! ;
+
+
+
+
+
+
+\ gc               mark stack#2                         09-14-20
+: top mp a! @a /mark ;
+: ?overflow sp @ top - > ;
+: overflow true abort" MARK STACK OVERFLOW" ;
+: decrease-mp /mark decrease-sp ;
+: enter-mark ?overflow if overflow then decrease-mp ;
+: ?underflow top + stack /stack + > ;
+: underflow true abort" MARK STACK UNDERFLOW" ;
+: increase-mp /mark increase-sp ;
+: leave-mark ?underflow if underflow then increase-mp ;
+
+
+
+
+
+
+\ gc               template#1                           09-14-20
+variable 'this-template 0 'this-template !
+
+: this-template 'this-template @ ;
+: template-kind this-template ;
+: template-copying this-template 1 cells + ;
+: /pointer 4 cells ;
+: object-template this-template 2 cells + ;
+: object-size this-template 3 cells + ;
+: /array 5 cells ;
+: element-template this-template 2 cells + ;
+: element-size this-template 3 cells + ;
+: element-number this-template 4 cells + ;
+
+
+
+\ gc               template#2                           09-14-20
+: record 3 cells + ;
+: fields-number this-template 2 cells + ;
+: tagfield 3 cells + ;
+: variants-number this-template 2 cells + ;
+: /field 2 cells ;
+: fields /field * ;
+: field-offset fields this-template + 3 cells + ;
+: field-template field-offset cell+ ;
+
+
+
+
+
+
+
+\ gc               mark phase#1                         09-15-20
+: !mark a! !+ !+ 0 !a current-mark ;
+: push-mark this-template enter-mark !mark ;
+: overwrite-mark this-template this-mark !mark ;
+: parcels-offset marking-locals @ storage - 1 parcels / ;
+: mark-parcels a bits+ object-size @ 1 parcels / set-bits ;
+: !this-template 'this-template ! ;
+: parcels-template object-template @ !this-template ;
+: dereference parcels-template marking-locals @ ;
+: ?null marking-locals 0= ;
+: ?marked parcels-offset dup bits+ @bit swap a! ;
+: ?unmarked ?null if ?marked exit then false ;
+: mark-object mark-parcels dereference overwrite-mark ;
+: drop-mark leave-mark drop current-mark ;
+
+
+\ gc               mark phase#2                         09-15-20
+: increase-counter dup 1+ marking-locals @ ! ;
+: ?element marking-locals @ @ dup element-number @ < ;
+: next-template element-template @ !this-template ;
+: next-offset element-size @ * cell+ ;
+: @element next-offset marking-locals @ + ;
+: next-object increase-counter @element ;
+: next-element next-template next-object push-mark ;
+: end-mark drop drop-mark ;
+
+
+
+
+
+
+
+\ gc               mark phase#3                         09-15-20
+: ?field marking-locals @ @ dup fields-number @ < ;
+: next-template dup field-template @ !this-template ;
+: @field field-offset @ marking-locals @ + ;
+: next-object increase-counter @field ;
+: next-field next-template next-object push-mark ;
+: @tag marking-locals @ dup @ ;
+: tagfield-object cell+ marking-locals ! ;
+: tagfield-template @tag field-template @ marking-template ! ;
+
+
+
+
+
+
+
+\ gc               mark phase#4                         09-15-20
+: mark-pointer ?unmarked if mark-object exit then drop-mark ;
+: mark-array ?element if next-element exit then end-mark ;
+: mark-record ?field if next-field exit then end-mark ;
+: mark-tagfield tagfield-template tagfield-object ;
+
+variable markers 3 cells allot drop
+: >> markers a! ['] mark-pointer !+ ['] mark-array !+ a ;
+: >>> a! ['] mark-record !+ ['] mark-tagfield !+ ; >> >>>
+
+: ?has-mark mp @ stack /stack + < ;
+: marker template-kind @ cells markers + @ ;
+: do-marker marking-template @ !this-template marker execute ;
+: mark current-mark begin ?has-mark while do-marker repeat ;
+
+
+\ gc               collection#3                         09-15-20
+: collect storage-map clear-bitmap mark ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
