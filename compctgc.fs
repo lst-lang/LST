@@ -15,8 +15,7 @@
 
 
 \ gc               bitmap#1                             09-13-20
-1 cells 8 * constant cell-bits
-variable 'this-bitmap 0 'this-bitmap !
+1 cells 8 * constant cell-bits variable 'this-bitmap
 variable left-bits variable middle-cells variable right-bits
 
 : this-bitmap 'this-bitmap @ ;
@@ -27,6 +26,7 @@ variable left-bits variable middle-cells variable right-bits
 : bit-mask dup 0= if 1+ exit then 1 swap for 2* next ;
 : set-bit bit-mask @a or !a ;
 : @bit bit-mask @a and 0= 1+ ;
+
 
 
 
@@ -65,16 +65,16 @@ variable left-bits variable middle-cells variable right-bits
 \ gc               runtime stack#1                      09-14-20
 128 cells constant /stack
 variable sp /stack allot dup sp ! constant stack
-variable fp sp cell+ fp !
-variable 'this-frame 0 'this-frame !
+variable fp sp cell+ fp ! variable 'this-frame
 
-: this-frame 'this-frame @ ;
 : /frame 3 cells ;
+: this-frame 'this-frame @ ;
+: this-locals this-frame /frame + ;
 : frame-template this-frame ;
-: frame-locals this-frame /frame + ;
 : previous-sp this-frame 1 cells + ;
 : previous-frame this-frame 2 cells + ;
 : current-frame fp @ 'this-frame ! ;
+
 
 
 
@@ -143,15 +143,15 @@ variable free 1 cells allot constant current
 
 
 \ gc               mark stack#1                         09-14-20
-variable mp stack /stack + mp !
-variable 'this-mark 0 'this-frame !
+variable mp stack /stack + mp ! variable 'this-mark
 
-: this-mark 'this-mark @ ;
 : /mark 3 cells ;
+: this-mark 'this-mark @ ;
 : marking-template this-mark ;
 : marking-locals this-mark 1 cells + ;
 : marking-recurse this-mark 2 cells + ;
 : current-mark mp @ 'this-mark ! ;
+
 
 
 
@@ -175,7 +175,7 @@ variable 'this-mark 0 'this-frame !
 
 
 \ gc               template#1                           09-14-20
-variable 'this-template 0 'this-template !
+variable 'this-template
 
 : this-template 'this-template @ ;
 : template-kind this-template ;
@@ -291,13 +291,77 @@ variable markers 3 cells allot drop
 : >> markers a! ['] mark-pointer !+ ['] mark-array !+ a ;
 : >>> a! ['] mark-record !+ ['] mark-tagfield !+ ; >> >>>
 
+: ?frame current-frame 0= 0= ;
+: @frame frame-template @ this-template! this-locals ;
+: push-frame @frame !mark previous-frame ;
+: push-frames begin ?frame while push-frame repeat ;
+: push-root current-frame push-frames ;
 : ?has-mark mp @ stack /stack + < ;
 : marker template-kind @ cells markers + @ ;
 : call-marker current-template marker execute ;
 : start-marking begin ?has-mark while call-marker repeat ;
 : mark current-mark start-marking ;
 
+\ gc               compaction#1                         09-18-20
+variable break-table variable break-entrys
+variable compacted variable uncompacted variable moved-units
+storage dup compacted ! uncompacted !
 
+: ?object ?end-of-map if false exit then ?bit-set ;
+: walk-bit 1 step-current ;
+: cell-set ?all-bits-set if cell-current exit then walk-bit ;
+: walk-cell ?cell-not-set if cell-current exit then cell-set ;
+: update-pointers ?cell-bound if walk-cell exit then walk-bit ;
+: next-gap begin ?object while update-pointers repeat ;
+: ?gap ?end-of-map if false exit then ?bit-set 0= ;
+: next-object begin ?gap while update-pointers repeat ;
+
+
+
+\ gc               compaction#1                         09-18-20
+: new-uncompacted current @ parcels storage + ;
+: update-uncompacted new-uncompacted uncompacted ! ;
+: next-break next-gap next-object update-uncompacted ;
+: ?uncompacted next-break ?end-of-map 0= ;
+: live-pointer current @ parcels storage + ;
+: object-size live-pointer uncompacted @ - ;
+: before-table break-table @ compacted @ - ;
+: ?roll-table before-table over < ;
+: current-offset break-entrys @ parcels ;
+: current-entry break-table @ current-offset + ;
+
+
+
+
+
+\ gc               compaction#2                         09-18-20
+: after-table uncompacted @ current-entry - ;
+: need-move after-table break-entrys @ parcels min ;
+: source break-table @ ;
+: destination uncompacted @ over - ;
+: move-table source swap destination swap 1 cells / move ;
+: update-table uncompacted @ current-offset - break-table ! ;
+: roll-table need-move move-table update-table ;
+: roll-cells before-table dup 1 cells / ;
+: move-cells >r uncompacted @ compacted @ r> move ;
+: update-uncompacted uncompacted a! @a over + !a ;
+: update-compacted break-table @ compacted ! ;
+: update-pointers update-uncompacted update-compacted ;
+
+
+
+\ gc               compaction#3                         09-18-20
+: move-parcels roll-cells move-cells update-pointers ;
+: roll-move ?roll-table if roll-table then move-parcels ;
+: move-object begin dup 0> while roll-move - repeat drop ;
+: break-point uncompacted @ dup compacted @ - ;
+: add-entry break-point swap current-entry a! !+ !a ;
+: increase-counter break-entrys a! @a 1+ !a ;
+: after-move add-entry increase-counter ;
+: build next-gap object-size move-object after-move ;
+: build-table begin ?uncompacted while build repeat ;
+: set-table storage break-table ! 0 break-entrys ! ;
+: compact set-pointers set-table build-table ;
 
 
 
