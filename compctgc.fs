@@ -228,12 +228,12 @@ variable 'this-template 0 'this-template !
 : pointer-reversal swap-object swap-recurse ;
 : end-pointer leave-mark drop current-mark ;
 : reversal reversal-marking pointer-reversal end-pointer ;
-: !mark dup template-marking ! a! !+ !+ 0 !a current-mark ;
-: object-mark @ this-template this-mark !mark ;
+: !mark a! !+ !+ 0 !a current-mark ;
+: overwrite-marking this-mark dup template-marking ! ;
+: object-mark @ this-template overwrite-marking !mark ;
 : push-object ?recurse if reversal exit then object-mark ;
 : mark-object set-map @pointer push-object ;
 : mark-pointer ?unmarked if mark-object exit then end-pointer ;
-
 
 
 
