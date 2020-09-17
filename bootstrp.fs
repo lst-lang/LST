@@ -450,15 +450,12 @@ updated-buffers 4 cells erase
 : block-buffer dup current-buffer ! [block-buffer] ;
 : update dup updated-buffer @ if dup assigned-block @
    swap [block-buffer] !block then drop ;
-: assign 2dup block-buffer
-   @block >r
-   swap over assigned-block !
-   false swap updated-buffer ! r> ;
+: assign 2dup block-buffer @block >r swap over
+   assigned-block ! false swap updated-buffer ! r> ;
 : block 4 for dup r@ 1- assigned-block @ =
    if drop r> 1- block-buffer exit then next
    4 for r@ 1- assigned-block @ 0=
-   if r> 1- assign exit then next
-   1 update 1 assign ;
+   if r> 1- assign exit then next 1 update 1 assign ;
 : buffer 4 for dup r@ 1- assigned-block @ =
    if drop r> 1- block-buffer exit then next
    4 for r@ 1- assigned-block @ 0=
@@ -473,8 +470,7 @@ updated-buffers 4 cells erase
 : flush save-buffers
    4 for 0 r@ 1- assigned-block ! next ;
 : unassign 4 for dup r@ 1- assigned-block @ =
-   if r> 1- assigned-block 0 swap ! drop exit then
-   next ;
+   if r> 1- assigned-block 0 swap ! drop exit then next ;
 : update true current-buffer @ updated-buffer ! ;
 : [search] - dup >r for 2dup >r >r >r >r
    over r> r> swap over compare
@@ -685,10 +681,9 @@ variable strbuf-pointer string-buffer1 strbuf-pointer !
 0 macro [floor] 0 macro [fnegate] 0 macro [frot]
 0 macro [fround] 0 macro [fswap] 0 macro [f0<]
 0 macro [f0=] 0 macro [ud>f] 0 macro [float.]
-variable fsp 32 floats allot constant fstack
--1 fsp !
-: one-more-float fsp @ 1+ dup 31 > if -3 [ throw, ] then
-   dup fsp ! floats fstack + ;
+variable fsp 32 floats allot constant fstack -1 fsp !
+: one-more-float fsp @ 1+ dup 31 >
+   if -3 [ throw, ] then dup fsp ! floats fstack + ;
 : fdrop fsp @ dup 0< if -4 [ throw, ] then 1- fsp ! ;
 : @float fsp @ dup 0< if -4 [ throw, ] then floats fstack + ;
 : f! @float swap [f!] drop fdrop ;
