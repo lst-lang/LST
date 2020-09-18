@@ -103,7 +103,7 @@ variable free 1 cells allot constant current
 
 : storage-map 'storage-map 'this-bitmap ! ;
 : round-units 1 parcels /mod 0> if 1+ then ;
-: set-pointers 0 dup free ! current ! ;
+: set-walkers 0 dup free ! current ! ;
 : no-memory true abort" NOT ENOUGH MEMORY" ;
 : ?end-of-map current @ 800 < 0= ;
 : ?found-enough dup current @ free @ - < ;
@@ -130,11 +130,11 @@ variable free 1 cells allot constant current
 : ?all-bits-set a invert 0= ;
 : cell-set ?all-bits-set if cell-both exit then walk-bit ;
 : walk-cell ?cell-not-set if cell-current exit then cell-set ;
-: update-pointers ?cell-bound if walk-cell exit then walk-bit ;
-: walk-map begin ?walk while update-pointers repeat ;
+: update-walkers ?cell-bound if walk-cell exit then walk-bit ;
+: walk-map begin ?walk while update-walkers repeat ;
 : check-result ?found-enough if free @ exit then no-memory ;
 : set-map >r r@ bits+ swap set-bits r> parcels storage + ;
-: search-empty set-pointers walk-map check-result set-map ;
+: search-empty set-walkers walk-map check-result set-map ;
 : allocate-units round-units storage-map search-empty ;
 
 
@@ -291,50 +291,66 @@ variable markers 3 cells allot drop
 : >> markers a! ['] mark-pointer !+ ['] mark-array !+ a ;
 : >>> a! ['] mark-record !+ ['] mark-tagfield !+ ; >> >>>
 
+: marker template-kind @ cells markers + @ ;
+: call-marker current-template marker execute ;
+
+
+
+
+
+
+
+
+
+\ gc               mark phase#7                         09-18-20
 : ?frame current-frame 0= 0= ;
 : @frame frame-template @ this-template! this-locals ;
 : push-frame @frame !mark previous-frame ;
 : push-frames begin ?frame while push-frame repeat ;
 : push-root current-frame push-frames ;
 : ?has-mark mp @ stack /stack + < ;
-: marker template-kind @ cells markers + @ ;
-: call-marker current-template marker execute ;
 : start-marking begin ?has-mark while call-marker repeat ;
 : mark current-mark start-marking ;
 
+
+
+
+
+
+
 \ gc               compaction#1                         09-18-20
 variable break-table variable break-entrys
+variable 'break-point 1 cells allot drop
 variable compacted variable uncompacted variable moved-units
 storage dup compacted ! uncompacted !
 
+: set-table storage break-table ! 0 break-entrys ! ;
 : ?object ?end-of-map if false exit then ?bit-set ;
 : walk-bit 1 step-current ;
 : cell-set ?all-bits-set if cell-current exit then walk-bit ;
 : walk-cell ?cell-not-set if cell-current exit then cell-set ;
-: update-pointers ?cell-bound if walk-cell exit then walk-bit ;
-: next-gap begin ?object while update-pointers repeat ;
+: update-walkers ?cell-bound if walk-cell exit then walk-bit ;
+
+
+
+
+\ gc               compaction#2                         09-18-20
+: next-gap begin ?object while update-walkers repeat ;
 : ?gap ?end-of-map if false exit then ?bit-set 0= ;
-: next-object begin ?gap while update-pointers repeat ;
-
-
-
-\ gc               compaction#1                         09-18-20
+: next-object begin ?gap while update-walkers repeat ;
 : new-uncompacted current @ parcels storage + ;
-: update-uncompacted new-uncompacted uncompacted ! ;
-: next-break next-gap next-object update-uncompacted ;
+: reset-uncompacted new-uncompacted uncompacted ! ;
+: next-break next-gap next-object reset-uncompacted ;
 : ?uncompacted next-break ?end-of-map 0= ;
 : live-pointer current @ parcels storage + ;
-: block-length live-pointer uncompacted @ - ;
+: block-length next-gap live-pointer uncompacted @ - ;
 : before-table break-table @ compacted @ - ;
 : ?roll-table before-table over < ;
 : current-offset break-entrys @ parcels ;
 : current-entry break-table @ current-offset + ;
 
 
-
-
-
-\ gc               compaction#2                         09-18-20
+\ gc               compaction#3                         09-18-20
 : after-table uncompacted @ current-entry - ;
 : need-move after-table break-entrys @ parcels min ;
 : source break-table @ ;
@@ -342,32 +358,80 @@ storage dup compacted ! uncompacted !
 : move-table source swap destination swap 1 cells / move ;
 : update-table uncompacted @ current-offset - break-table ! ;
 : roll-table need-move move-table update-table ;
-: roll-cells before-table dup 1 cells / ;
+: roll-cells dup before-table dup 1 cells / min ;
 : move-cells >r uncompacted @ compacted @ r> move ;
 : update-uncompacted uncompacted a! @a over + !a ;
-: update-compacted break-table @ compacted ! ;
-: update-pointers update-uncompacted update-compacted ;
+: update-compacted compacted a! @a over + !a ;
+: update-state update-uncompacted update-compacted ;
 
 
 
-\ gc               compaction#3                         09-18-20
-: move-parcels roll-cells move-cells update-pointers ;
+\ gc               compaction#4                         09-18-20
+: move-parcels roll-cells move-cells update-state ;
 : roll-move ?roll-table if roll-table then move-parcels ;
 : move-block begin dup 0> while roll-move - repeat drop ;
-: break-point uncompacted @ dup compacted @ - ;
+: break-point 'break-point a! @+ dup @a - ;
 : add-entry break-point swap current-entry a! !+ !a ;
 : increase-counter break-entrys a! @a 1+ !a ;
 : after-move add-entry increase-counter ;
-: build next-gap block-length move-block after-move ;
+: space-state compacted @ uncompacted @ ;
+: save-point space-state 'break-point a! !+ !a ;
+: build save-point block-length move-block after-move ;
 : build-table begin ?uncompacted while build repeat ;
-: set-table storage break-table ! 0 break-entrys ! ;
-: compact set-pointers set-table build-table ;
+
+
+
+
+\ gc               compaction#5                         09-18-20
+variable root variable child variable end
+
+: ?need-sort break-entrys a! @a 1 > ;
+: last-parent 1- dup end ! 1- 2/ ;
+: left 2* 1+ dup child ! ;
+: ?has-child root @ left end @ > 0= ;
+: entry parcels break-table @ + ;
+: less-than swap entry @ swap entry @ < ;
+: ?left-greater root @ child @ 2dup less-than ;
+: left-max ?left-greater if swap then drop ;
+: ?has-right child @ 1+ dup end @ > 0= ;
+: ?right-greater ?has-right if 2dup less-than exit then false ;
+: right-max ?right-greater if swap then drop ;
+
+
+\ gc               compaction#6                         09-18-20
+: ?need-swap dup root @ = 0= ;
+: two-values 2dup >r >r >r a! @+ @+ r> a! @+ @+ r> r> ;
+: swap! >r a! swap !+ !a swap !r !r r> drop ;
+: swap-entry entry swap entry two-values swap! ;
+: swap-root root @ over swap-entry root ! false ;
+: swap-parent ?need-swap if swap-root exit then drop true ;
+: down-child left-max right-max swap-parent ;
+: root-largest ?has-child if down-child exit then true ;
+: sift-down root ! begin root-largest until ;
+
+
+
+
+
+\ gc               compaction#7                         09-18-20
+: heapify last-parent 1+ for r@ 1- sift-down next ;
+: sort dup 0 swap-entry 1- end ! 0 sift-down ;
+: heapsort heapify end @ for r@ sort next ;
+: sort-table ?need-sort if @a heapsort exit then ;
+: table-compact set-table build-table sort-table ;
+: compact set-walkers table-compact ;
+
+
+
+
+
+
 
 
 
 
 \ gc               collection#1                         09-15-20
-: collect storage-map clear-bitmap mark ;
+: collect storage-map clear-bitmap mark compact ;
 
 
 
