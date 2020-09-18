@@ -402,7 +402,7 @@ macro_words (void)
 Cell
 macro_int_dot (Cell n)
 {
-  return printf ("%d:%u ", (int) n, (unsigned) n);
+  return printf ("%d(%u) ", (int) n, (unsigned) n);
 }
 
 Cell
