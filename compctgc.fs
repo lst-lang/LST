@@ -324,7 +324,7 @@ storage dup compacted ! uncompacted !
 : next-break next-gap next-object update-uncompacted ;
 : ?uncompacted next-break ?end-of-map 0= ;
 : live-pointer current @ parcels storage + ;
-: object-size live-pointer uncompacted @ - ;
+: block-length live-pointer uncompacted @ - ;
 : before-table break-table @ compacted @ - ;
 : ?roll-table before-table over < ;
 : current-offset break-entrys @ parcels ;
@@ -353,12 +353,12 @@ storage dup compacted ! uncompacted !
 \ gc               compaction#3                         09-18-20
 : move-parcels roll-cells move-cells update-pointers ;
 : roll-move ?roll-table if roll-table then move-parcels ;
-: move-object begin dup 0> while roll-move - repeat drop ;
+: move-block begin dup 0> while roll-move - repeat drop ;
 : break-point uncompacted @ dup compacted @ - ;
 : add-entry break-point swap current-entry a! !+ !a ;
 : increase-counter break-entrys a! @a 1+ !a ;
 : after-move add-entry increase-counter ;
-: build next-gap object-size move-object after-move ;
+: build next-gap block-length move-block after-move ;
 : build-table begin ?uncompacted while build repeat ;
 : set-table storage break-table ! 0 break-entrys ! ;
 : compact set-pointers set-table build-table ;
