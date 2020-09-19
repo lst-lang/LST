@@ -32,12 +32,13 @@ The implementation would consist of four basic components:
 * Goto: `prog label: a:=1; go label end`
 * Function: `fun max a b; if a>b then a else b`
 * Declaration: `decl <type> <var>,<var>...; <type> ... end`
+* Union case: `case <var> in <sel>:<expr>; <sel>: ...; else <expr> end`
 
 ## Data Definition:
 * Structure/Record with two members: `data rect = length * width`
 * Structure/Record with a single member: `data circle = * radius`
 * Union: `data shape = srect | scircle`
-* Alias: `data shape2 = shape`
+* Alias: `data window = rect`, `data string = [] char`
 
 ## Declaration
 A declaration statement specifies the type of variables and functions.
@@ -51,7 +52,7 @@ prog vars temp;
    decl int temp end;
    if a>b then temp:=a else temp:=b;
    return temp;
-end
+end max
 ```
 
 ## Example
@@ -67,28 +68,30 @@ fun areaofrect r;
    length(r) * width(r);
    
 fun areaofcircle c;
-   radius(c) * radius(c) * 3.14;
+   decl circle c; int areaofcircle end;
+prog vars r;
+   decl int r end;
+   r := radius(c);
+   return r * r * 3.14
+end areaofcircle;
 
 fun areaofshape s;
    decl shape s; int areaofshape end;
-prog vars shapetype;
-   decl int shapetype end;
-   shapetype := type(s);
-   if shapetype = shape(srect)
-      then return areaofrect(srect(s))
-      else return areaofcircle(scircle(s))
-end;
+case s in
+   srect: areaofrect(srect(s));
+   else areaofcircle(scircle(s))
+end areaofshape;
 
 fun main;
    decl void main end;
-prog vars arrayofshapes c;
-   decl [] ref shape arrayofshapes; circle c end;
-   arrayofshapes := makearray(1, ref shape);
-   arrayofshapes[0] := make(shape);
+prog vars shapes c;
+   decl [] ref shape shapes; circle c end;
+   shapes := makearray(1, ref shape);
+   shapes[0] := make(shape);
    radius(c) := 10;
-   scricle(deref(arrayofshapes[0])) := c;
-   print(areaofshape(deref(arrayofshapes[0])))
-end
+   scricle(deref(shapes[0])) := c;
+   print(areaofshape(deref(shapes[0])))
+end main
 ```
 
 translate to s-expressions:
@@ -104,25 +107,27 @@ translate to s-expressions:
    (TIMES (LENGTH R) (WIDTH R))))
 
 (DEFINE AREAOFCIRCLE (LAMBDA (C)
-   (TIMES (RADIUS C) (RADIUS C) 3.14)))
+   (DECLARE (CIRCLE C) (INT LAMBDA))
+(PROG (R)
+   (DECLARE (INT R))
+   (SETQ R (RADIUS C))
+   (RETURN (TIMES R R 3.14)))))
 
 (DEFINE AREAOFSHAPE (LAMBDA (S)
    (DECLARE (SHAPE S) (INT LAMBDA))
-(PROG (SHAPETYPE)
-   (DECLARE (INT SHAPETYPE))
-   (SETQ SHAPETYPE (TYPE S))
-   (COND ((EQUAL SHAPETYPE (SHAPE RECT)) (RETURN (AREAOFRECT (SRECT S))))
-       (T (RETURN (AREAOFCIRCLE (SCIRCLE S))))))))
+(CASE S
+   (SRECT (AREAOFRECT (SRECT S)))
+   (AREAOFCIRCLE (SCIRCLE S)))))
 
 (DEFINE MAIN (LAMBDA ()
    (DECLARE (VOID LAMBDA))
-(PROG (ARRAYOFSHAPES C)
-   (DECLARE ((ARRAY (REFERENCE SHAPE)) ARRAYOFSHAPES) (CIRCLE C))
-   (SETQ ARRAYOFSHAPES (MAKEARRAY 1 (REFERENCE SHAPE)))
-   (SETQ (ARRAYOFSHAPES 0) (MAKE SHAPE))
+(PROG (SHAPES C)
+   (DECLARE ((ARRAY (REFERENCE SHAPE)) SHAPES) (CIRCLE C))
+   (SETQ SHAPES (MAKEARRAY 1 (REFERENCE SHAPE)))
+   (SETQ (SHAPES 0) (MAKE SHAPE))
    (SETQ (RADIUS C) 10)
-   (SETQ (SCIRCLE (DEREFERENCE (ARRAYOFSHAPES 0))) C)
-   (PRINT (AREAOFSHAPE (DEREFERENCE (ARRAYOFSHAPES 0)))))))
+   (SETQ (SCIRCLE (DEREFERENCE (SHAPES 0))) C)
+   (PRINT (AREAOFSHAPE (DEREFERENCE (SHAPES 0)))))))
 ```
 
 
