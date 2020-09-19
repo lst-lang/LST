@@ -23,9 +23,9 @@ The implementation would consist of four basic components:
 * Reference/Pointer: `ref int`, `ref [3] real`, `ref [] char`
 * Function/Procedure: `lambda (int int) void`
 * Structure/Record: `ca (int int)`
-* Structure/Record with selectors: `ca ((length int) (width int))`
+* Structure/Record and selectors: `ca ((length int) (width int))`
 * Union: `union (int real char)`
-* Union with selectors: `union ((i int) (r real) (c char))`
+* Union and selectors: `union ((i int) (r real) (c char))`
 
 ## Statements
 * Assignment: `a := 1`, `b := 3.0`
@@ -37,7 +37,6 @@ The implementation would consist of four basic components:
 * Function: `fun max a b; if a>b then a else b`
 * Declaration: `decl <type> <var>,<var>...; <type> ... end`
 * Type definition: `type string = [] char`
-* Union case: `case <var> in <sel>:<expr>; <sel>: ...; else <expr> end`
 
 ## Declaration
 A declaration statement specifies the type of variables and functions.
@@ -72,11 +71,10 @@ prog vars r;
 end areaofcircle;
 
 fun areaofshape s;
-   decl shape s; int areaofshape end;
-case s in
-   srect: areaofrect(srect(s));
-   else areaofcircle(scircle(s))
-end areaofshape;
+      decl shape s; int areaofshape end;
+   if type(s) = index(shape, srect)
+      then areaofrect(srect(s))
+      else areaofcircle(scircle(s));
 
 fun main;
    decl void main end;
@@ -108,9 +106,10 @@ translate to s-expressions:
 
 (DEFINE AREAOFSHAPE (LAMBDA (S)
    (DECLARE (SHAPE S) (INT LAMBDA))
-(CASE S
-   (SRECT (AREAOFRECT (SRECT S)))
-   (AREAOFCIRCLE (SCIRCLE S)))))
+(COND
+   ((EQUAL (TYPE S) (INDEX SHAPE SRECT))
+      (AREAOFRECT (SRECT S)))
+   (T (AREAOFCIRCLE (SCIRCLE S))))))
 
 (DEFINE MAIN (LAMBDA ()
    (DECLARE (VOID LAMBDA))
