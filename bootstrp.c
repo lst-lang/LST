@@ -30,7 +30,7 @@
   MEMBER_OFFSET (System, task) + MEMBER_OFFSET (Terminal_Task, m)
 
 static Character *
-extract_name (char *name)
+make_forth_string (char *name)
 {
   static Character buffer[ENTRY_NAME_SIZE];
   Cell i, j, length;
@@ -48,7 +48,7 @@ define (char *name)
 {
   Character *temp;
 
-  temp = extract_name (name);
+  temp = make_forth_string (name);
   word_end (word_begin (temp + 1, temp[0]));
 }
 
@@ -80,7 +80,7 @@ emit_call (char *name)
 {
   Character *temp;
 
-  temp = extract_name (name);
+  temp = make_forth_string (name);
   _emit_call (temp + 1, temp[0]);
 }
 
