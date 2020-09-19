@@ -146,14 +146,18 @@ quit
    exit then fetch-plus, ; immediate
 : !r ?interp if [ store-r, ] exit then store-r, ; immediate
 : @r ?interp if [ fetch-r, ] exit then fetch-r, ; immediate
-: c!a ?interp if [ c-store-a, ] exit then c-store-a, ; immediate
-: c@a ?interp if [ c-fetch-a, ] exit then c-fetch-a, ; immediate
+: c!a ?interp if [ c-store-a, ] exit
+   then c-store-a, ; immediate
+: c@a ?interp if [ c-fetch-a, ] exit
+   then c-fetch-a, ; immediate
 : c!+ ?interp if [ c-store-plus, ]
    exit then c-store-plus, ; immediate
 : c@+ ?interp if [ c-fetch-plus, ]
    exit then c-fetch-plus, ; immediate
-: c!r ?interp if [ c-store-r, ] exit then c-store-r, ; immediate
-: c@r ?interp if [ c-fetch-r, ] exit then c-fetch-r, ; immediate
+: c!r ?interp if [ c-store-r, ] exit
+   then c-store-r, ; immediate
+: c@r ?interp if [ c-fetch-r, ] exit
+   then c-fetch-r, ; immediate
 : ! ?interp if [ store, ] exit then store, ; immediate
 : @ ?interp if [ fetch, ] exit then fetch, ; immediate
 : c! ?interp if [ c-store, ] exit then c-store, ; immediate
@@ -227,8 +231,8 @@ quit
 : and ?interp if [ and, ] exit then and, ; immediate
 : or ?interp if [ or, ] exit then or, ; immediate
 : xor ?interp if [ xor, ] exit then xor, ; immediate
-: negate ?interp if [ negate, ] exit
-   then negate, ; immediate
+: negate ?interp if [ negate, ] exit then negate, ; immediate
+: recurse ?interp if -14 [ throw, ] then recurse, ; immediate
 : begin fill-nop, here @ ; immediate
 : while 55 -1 slot-instruction, swap ; immediate
 : repeat 54 swap slot-instruction, drop
@@ -237,8 +241,7 @@ quit
 : for to-r, postpone begin ; immediate
 : next 56 swap slot-instruction, drop ; immediate
 : <<d->> >r swap r> - >r 2dup u<
-   if 0 invert swap - + 1+ r> 1- exit
-   then - r> exit ;
+   if 0 invert swap - + 1+ r> 1- exit then - r> exit ;
 : d+ >r swap r> + >r 2dup + swap over swap u< >r swap
    over swap u< r> or r> swap if 1+ then ;
 : dnegate dup 0<

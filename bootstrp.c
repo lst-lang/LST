@@ -200,6 +200,7 @@ define_words (void)
   define_macro_word ("SLOT-INSTRUCTION,", 0);
   define_macro_word ("FILL,", 1);
   define_macro_word ("TAIL-RECURSE,", 1);
+  define_macro_word ("RECURSE,", 1);
   define_macro_word ("BEGIN,", 0);
   define_macro_word ("END,", 1);
   define_macro_word ("POSTPONE,", 1);
@@ -220,7 +221,6 @@ define_words (void)
   define_macro_word ("EMIT", 1);
   define_macro_word ("!BLOCK", 0);
   define_macro_word ("@BLOCK", 0);
-  define_macro_word ("RECURSE", 1);
   define_macro_word ("KEY", 0);
 				  
   define_opcode_word ("HALT,", OP_HALT);

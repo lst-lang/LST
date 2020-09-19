@@ -65,6 +65,7 @@ Cell
 macro_recurse (void)
 {
   emit_instruction_slot_and_word (OP_CALL, sys.task.recursive);
+  fill_instruction_word (OP_NOP);
   return sys.task.vocabulary;
 }
 
@@ -343,6 +344,7 @@ register_core_macros (void)
 		  (Function) emit_instruction_slot_and_word, 2);
   register_macro ("FILL,", (Function) macro_fill_instruction_word, 1);
   register_macro ("TAIL-RECURSE,", (Function) macro_tail_recurse, 0);
+  register_macro ("RECURSE,", (Function) macro_recurse, 0);
   register_macro ("BEGIN,", (Function) macro_define, 2);
   register_macro ("END,", (Function) macro_end_define, 1);
   register_macro ("FIND-WORD", (Function) macro_find_word, 2);
@@ -358,5 +360,4 @@ register_core_macros (void)
   register_macro ("EMIT", (Function) macro_emit, 1);
   register_macro ("@BLOCK", (Function) macro_fetch_block, 2);
   register_macro ("!BLOCK", (Function) macro_store_block, 2);
-  register_macro ("RECURSE", (Function) macro_recurse, 0);
 }
