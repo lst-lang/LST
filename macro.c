@@ -48,7 +48,7 @@ DEFINEINVOKER (4, (sys.task.stack[3], sys.task.stack[2],
 		   sys.task.stack[1], sys.task.stack[0]))
 
 static int
-calculate_name_size (char *c_string)
+truncate_name (char *c_string)
 {
   int length;
 
@@ -61,7 +61,7 @@ macro_has_name (Character *name, char *c_string)
 {
   int i, length;
 
-  length = calculate_name_size (c_string);
+  length = truncate_name (c_string);
   if (length != *name++)
     return 0;
   for (i = 0; i < length; i++)
@@ -89,7 +89,7 @@ register_macro (char *name, Function invokee,
     {
       int length;
 
-      length = calculate_name_size (name);
+      length = truncate_name (name);
       memcpy ((char *) object->name, (char *) name,
               sizeof (char) * length);
       object->name[length] = 0;
