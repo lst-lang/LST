@@ -362,7 +362,7 @@ macro_see (void)
 	  case OP_HALT:
 	    printf (" ;");
 	    goto ret;
-	  case OP_LIT: case OP_JMP: case OP_CALL:
+	  case OP_LIT: case OP_JMP: case OP_DRJNE: case OP_CALL:
 	  case OP_JZ: case OP_MACRO: case _OP_MACRO:
 	    printf (" %s",
 		    opcode_names[(((Unsigned_Cell) *word) >> (i * 8))
