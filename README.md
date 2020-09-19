@@ -21,7 +21,11 @@ The implementation would consist of four basic components:
 * Static Array: `[3] int`, `[3][4][5] real`
 * Dynamic Array: `[] char`
 * Reference/Pointer: `ref int`, `ref [3] real`, `ref [] char`
-* Function/Procedure: `(int, int) void`, `((int int) void, int, int) void`
+* Function/Procedure: `lambda (int int) void`
+* Structure/Record: `ca (int int)`
+* Structure/Record with selectors: `ca ((length int) (width int))`
+* Union: `union (int real char)`
+* Union with selectors: `union ((i int) (r real) (c char))`
 
 ## Statements
 * Assignment: `a := 1`, `b := 3.0`
@@ -32,13 +36,8 @@ The implementation would consist of four basic components:
 * Goto: `prog label: a:=1; go label end`
 * Function: `fun max a b; if a>b then a else b`
 * Declaration: `decl <type> <var>,<var>...; <type> ... end`
+* Type definition: `type string = [] char`
 * Union case: `case <var> in <sel>:<expr>; <sel>: ...; else <expr> end`
-
-## Data Definition:
-* Structure/Record with two members: `data rect = length * width`
-* Structure/Record with a single member: `data circle = * radius`
-* Union: `data shape = srect | scircle`
-* Alias: `data window = rect`, `data string = [] char`
 
 ## Declaration
 A declaration statement specifies the type of variables and functions.
@@ -57,12 +56,9 @@ end max
 
 ## Example
 ```
-data rect = length * width;
-   decl int length,width end;
-data circle = * radius;
-   decl int radius end;
-data shape = srect | scircle;
-   decl rect srect; circle scircle end;
+type rect = ca ((length int) (width int));
+type circle = ca ((radius int));
+type shape = union ((srect rect) (scircle circle));
 
 fun areaofrect r;
    length(r) * width(r);
@@ -96,12 +92,9 @@ end main
 
 translate to s-expressions:
 ```
-(DATA RECT (CARTESIAN LENGTH WIDTH)
-   (DECLARE (INT LENGTH WIDTH)))
-(DATA CIRCLE (CARTESIAN RADIUS)
-   (DECLARE (INT RADIUS)))
-(DATA SHAPE (UNION SRECT SCIRCLE)
-   (DECLARE (RECT SRECT) (CIRCLE SCIRCLE)))
+(TYPE RECT (CARTESIAN (LENGTH INT) (WIDTH INT)))
+(TYPE CIRCLE (CARTESIAN (RADIUS INT)))
+(TYPE SHAPE (UNION (SRECT RECT) (SCIRCLE RECT)))
    
 (DEFINE AREAOFRECT (LAMBDA (R)
    (TIMES (LENGTH R) (WIDTH R))))
