@@ -188,6 +188,10 @@ quit
    then two-star, ; immediate
 : 2/ ?interp if [ two-slash, ] exit
    then two-slash, ; immediate
+: rshift ?interp if [ r-shift, ] exit
+   then r-shift, ; immediate
+: lshift ?interp if [ l-shift, ] exit
+   then l-shift, ; immediate
 : 0= ?interp if [ zero-equals, ] exit
    then zero-equals, ; immediate
 : 0< ?interp if [ zero-less, ] exit
@@ -362,9 +366,7 @@ input constant input #input constant #input in constant >in
    swap drop dup entry-flag + @ dup 0= if 1- then ;
 here constant here
 : align here @ aligned here ! ;
-: lshift dup if for 2* next exit then drop ;
 : quit cr quit ;
-: rshift dup if for 2/ next exit then drop ;
 : s>d dup 0< if -1 else 0 then ;
 : sign 0< if '-' hold then ;
 : source input @ #input @ ;

@@ -152,6 +152,7 @@ execute (Cell pc)
 	    t = POP_PARAMETER;
 	    break;
 	  case OP_OVER:
+	    NEED_PARAMETERS(2);
 	    temp = LOWER_PARAMETER (0);
 	    goto _dup;
 	  case OP_ROT:
@@ -227,17 +228,16 @@ execute (Cell pc)
 	    UNARY (t = t << 1);
 	    break;
 	  case OP_U_TWO_SLASH:
-	    NEED_PARAMETERS (1);
-	    t = (Cell) ((Unsigned_Cell) t >> 1);
+	    UNARY (t = (Cell) ((Unsigned_Cell) t >> 1));
 	    break;
 	  case OP_TWO_SLASH:
 	    UNARY (t = t >> 1);
 	    break;
 	  case OP_R_SHIFT:
-	    BINARY_OPERATION (<<);
+	    BINARY_OPERATION_CAST (>>, Unsigned_Cell);
 	    break;
 	  case OP_L_SHIFT:
-	    BINARY_OPERATION (>>);
+	    BINARY_OPERATION (<<);
 	    break;
 	  case OP_TRUE:
 	    UNARY (t = -1);

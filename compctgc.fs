@@ -23,7 +23,7 @@ variable left-bits variable middle-cells variable right-bits
 : bitmap 0> if 1+ then dup 1+ cells allot swap over ! ;
 : clear-bitmap this-bitmap a! @+ for 0 !+ next ;
 : bits+ bits swap 1+ cells this-bitmap + a! ;
-: bit-mask dup 0= if 1+ exit then 1 swap for 2* next ;
+: bit-mask dup 0= if 1+ exit then 1 swap lshift ;
 : set-bit bit-mask @a or !a ;
 : @bit bit-mask @a and 0= 1+ ;
 
@@ -36,7 +36,7 @@ variable left-bits variable middle-cells variable right-bits
 : split-middle left-bits @ - cell-bits /mod ;
 : split-right right-bits ! middle-cells ! ;
 : split swap split-left split-middle split-right ;
-: bits-mask 0 invert swap for 2* next ;
+: bits-mask 0 invert swap lshift ;
 : left-mask cell-bits @a - bits-mask ;
 : or-mask! over 0= if swap drop exit then a! @a or !+ a ;
 : set-left left-bits a! left-mask swap or-mask! ;
