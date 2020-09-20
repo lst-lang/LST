@@ -22,8 +22,8 @@ The implementation would consist of four basic components:
 * Dynamic Array: `[] char`
 * Reference/Pointer: `ref int`, `ref [3] real`, `ref [] char`
 * Function/Procedure: `lambda (int int) void`
-* Structure/Record: `ca (int int)`
-* Structure/Record and selectors: `ca ((length int) (width int))`
+* Structure/Record: `cartes (int int)`
+* Structure/Record and selectors: `cartes ((length int) (width int))`
 * Union: `union (int real char)`
 * Union and selectors: `union ((i int) (r real) (c char))`
 
@@ -45,7 +45,7 @@ a type of `sexpr`. All types of objects can be converted to s-expressions
 and back without losing data.
 ```
 fun max a b;
-   decl int a,b,max end;
+   decl int a,b end; type int;
 prog vars temp;
    decl int temp end;
    if a>b then temp:=a else temp:=b;
@@ -55,30 +55,30 @@ end max
 
 ## Example
 ```
-type rect = ca ((length int) (width int));
-type circle = ca ((radius int));
+type rect = cartes ((length int) (width int));
+type circle = cartes ((radius int));
 type shape = union ((srect rect) (scircle circle));
 
 fun areaofrect r;
    length(r) * width(r);
    
 fun areaofcircle c;
-   decl circle c; int areaofcircle end;
-prog vars r;
-   decl int r end;
-   r := radius(c);
-   return r * r * 3.14
-end areaofcircle;
+   radius(c) * radius(c) * 3.14;
 
 fun areaofshape s;
-      decl shape s; int areaofshape end;
-   if type(s) = index(shape, srect)
-      then areaofrect(srect(s))
-      else areaofcircle(scircle(s));
+   decl shape s end; type int;
+prog
+   if type(s)=1 then
+      return areaofrect(srect(s))
+   else if type(s)=2 then
+      return areaofcircle(scircle(s))
+   else error("BAD SHAPE")
+end areaofshape;
 
 fun main;
-   decl void main end;
-prog vars shapes c;
+   type void;
+prog
+   vars shapes c;
    decl [] ref shape shapes; circle c end;
    shapes := makearray(1, ref shape);
    shapes[0] := make(shape);
@@ -90,36 +90,38 @@ end main
 
 translate to s-expressions:
 ```
-(TYPE RECT (CARTESIAN (LENGTH INT) (WIDTH INT)))
-(TYPE CIRCLE (CARTESIAN (RADIUS INT)))
-(TYPE SHAPE (UNION (SRECT RECT) (SCIRCLE RECT)))
-   
-(DEFINE AREAOFRECT (LAMBDA (R)
-   (TIMES (LENGTH R) (WIDTH R))))
+DEFLIST ((
+(RECT (CARTESIAN ((LENGTH INT) (WIDTH INT))))
+(CIRCLE (CARTESIAN ((RADIUS INT))))
+(SHAPE (UNION ((SRECT RECT) (SCIRCLE CIRCLE))))
+) TEXPR)
 
-(DEFINE AREAOFCIRCLE (LAMBDA (C)
-   (DECLARE (CIRCLE C) (INT LAMBDA))
-(PROG (R)
-   (DECLARE (INT R))
-   (SETQ R (RADIUS C))
-   (RETURN (TIMES R R 3.14)))))
-
-(DEFINE AREAOFSHAPE (LAMBDA (S)
-   (DECLARE (SHAPE S) (INT LAMBDA))
-(COND
-   ((EQUAL (TYPE S) (INDEX SHAPE SRECT))
-      (AREAOFRECT (SRECT S)))
-   (T (AREAOFCIRCLE (SCIRCLE S))))))
-
-(DEFINE MAIN (LAMBDA ()
-   (DECLARE (VOID LAMBDA))
-(PROG (SHAPES C)
-   (DECLARE ((ARRAY (REFERENCE SHAPE)) SHAPES) (CIRCLE C))
-   (SETQ SHAPES (MAKEARRAY 1 (REFERENCE SHAPE)))
-   (SETQ (SHAPES 0) (MAKE SHAPE))
-   (SETQ (RADIUS C) 10)
-   (SETQ (SCIRCLE (DEREFERENCE (SHAPES 0))) C)
-   (PRINT (AREAOFSHAPE (DEREFERENCE (SHAPES 0)))))))
+DEFINE ((
+(AREAOFRECT
+   (LAMBDA (R)
+      (TIMES (LENGTH R) (WIDTH R))))
+(AREAOFCIRCLE
+   (LAMBDA (C)
+      (TIMES (RADIUS C) (RADIUS C) 3.14)))
+(AREAOFSHAPE
+   (LAMBDA (S) (DECLARE (SHAPE S)) (TYPE INT)
+      (PROG ()
+         (COND ((EQUAL (TYPE S) 1)
+	        (RETURN (AREAOFRECT (SRECT S))))
+               ((EQUAL (TYPE S) 2)
+	        (RETURN (AREAOFCIRCLE (SCIRCLE S))))
+               (T (ERROR "BAD SHAPE"))))))
+(MAIN
+   (LAMBDA () (TYPE VOID)
+      (PROG (SHAPES C)
+         (DECLARE ((ARRAY (REFERENCE SHAPE)) SHAPES)
+	          (CIRCLE C))
+         (SETQ SHAPES (MAKEARRAY 1 (REFERENCE SHAPE)))
+         (SETQ (SHAPES 0) (MAKE SHAPE))
+         (SETQ (RADIUS C) 10)
+         (SETQ (SCIRCLE (DEREFERENCE (SHAPES 0))) C)
+         (PRINT (AREAOFSHAPE (DEREFERENCE (SHAPES 0)))))))
+))
 ```
 
 
