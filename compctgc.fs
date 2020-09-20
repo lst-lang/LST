@@ -417,7 +417,7 @@ variable root variable child variable end
 : heapify last-parent 1+ for r@ 1- sift-down next ;
 : sort dup 0 swap-entry 1- end ! 0 sift-down ;
 : heapsort heapify end @ for r@ sort next ;
-: sort-table ?need-sort if @a heapsort exit then ;
+: sort-table ?need-sort if @a heapsort then ;
 : table-compact set-table build-table sort-table ;
 : compact set-walkers table-compact ;
 
