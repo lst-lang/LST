@@ -135,7 +135,7 @@ variable free 1 cells allot constant current
 : check-result ?found-enough if free @ exit then no-memory ;
 : set-map >r r@ bits+ swap set-bits r> parcels storage + ;
 : search-empty set-walkers walk-map check-result set-map ;
-: allocate-units round-units storage-map search-empty ;
+: allocate round-units storage-map search-empty ;
 
 
 
@@ -320,7 +320,7 @@ variable markers 3 cells allot drop
 
 \ gc               compaction#1                         09-18-20
 variable break-table variable break-entrys
-variable 'break-point 1 cells allot drop
+variable break-point 1 cells allot drop
 variable compacted variable uncompacted variable moved-units
 storage dup compacted ! uncompacted !
 
@@ -370,12 +370,12 @@ storage dup compacted ! uncompacted !
 : move-parcels roll-cells move-cells update-state ;
 : roll-move ?roll-table if roll-table then move-parcels ;
 : move-block begin dup 0> while roll-move - repeat drop ;
-: break-point 'break-point a! @+ dup @a - ;
-: add-entry break-point swap current-entry a! !+ !a ;
+: @break-point break-point a! @+ dup @a - ;
+: add-entry @break-point swap current-entry a! !+ !a ;
 : increase-counter break-entrys a! @a 1+ !a ;
 : after-move add-entry increase-counter ;
 : space-state compacted @ uncompacted @ ;
-: save-point space-state 'break-point a! !+ !a ;
+: save-point space-state break-point a! !+ !a ;
 : build save-point block-length move-block after-move ;
 : build-table begin ?uncompacted while build repeat ;
 
@@ -430,7 +430,7 @@ variable root variable child variable end
 
 
 
-\ gc               collection#1                         09-15-20
+\ gc               collection                           09-15-20
 : collect storage-map clear-bitmap mark compact ;
 
 
