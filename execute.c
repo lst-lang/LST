@@ -38,6 +38,9 @@
 #define BINARY_OPERATION(op) BINARY (t = LOWER_PARAMETER (0) op t)
 #define BINARY_OPERATION_CAST(op,c)		\
   BINARY (t=(c) LOWER_PARAMETER (0) op (c) t)
+#define COMPARE_OPERATION(op) BINARY_OPERATION (op); t = -t
+#define COMPARE_OPERATION_CAST(op,c)		\
+  BINARY_OPERATION_CAST (op, c); t = -t
 #define UNARY(e) NEED_PARAMETERS (1); e
 #define UNARY_OPERATION(op) UNARY (t = op t)
 #define SWAP(a,b) temp = (a); (a) = (b); (b) = temp
@@ -252,44 +255,34 @@ execute (Cell pc)
 	    UNARY (t = -(t < 0));
 	    break;
 	  case OP_U_GREATER_THAN:
-	    BINARY_OPERATION_CAST (>, Unsigned_Cell);
-	    t = -t;
+	    COMPARE_OPERATION_CAST (>, Unsigned_Cell);
 	    break;
 	  case OP_U_LESS_THAN:
-	    BINARY_OPERATION_CAST (<, Unsigned_Cell);
-	    t = -t;
+	    COMPARE_OPERATION_CAST (<, Unsigned_Cell);
 	    break;
 	  case OP_EQUALS:
-	    BINARY_OPERATION (==);
-	    t = -t;
+	    COMPARE_OPERATION (==);
 	    break;
 	  case OP_U_GREATER_EQUALS:
-	    BINARY_OPERATION_CAST (>=, Unsigned_Cell);
-	    t = -t;
+	    COMPARE_OPERATION_CAST (>=, Unsigned_Cell);
 	    break;
 	  case OP_U_LESS_EQUALS:
-	    BINARY_OPERATION_CAST (<=, Unsigned_Cell);
-	    t = -t;
+	    COMPARE_OPERATION_CAST (<=, Unsigned_Cell);
 	    break;
 	  case OP_NOT_EQUALS:
-	    BINARY_OPERATION (!=);
-	    t = -t;
+	    COMPARE_OPERATION (!=);
 	    break;
 	  case OP_GREATER_THAN:
-	    BINARY_OPERATION (>);
-	    t = -t;
+	    COMPARE_OPERATION (>);
 	    break;
 	  case OP_LESS_THAN:
-	    BINARY_OPERATION (<);
-	    t = -t;
+	    COMPARE_OPERATION (<);
 	    break;
 	  case OP_GREATER_EQUALS:
-	    BINARY_OPERATION (>=);
-	    t = -t;
+	    COMPARE_OPERATION (>=);
 	    break;
 	  case OP_LESS_EQUALS:
-	    BINARY_OPERATION (<=);
-	    t = -t;
+	    COMPARE_OPERATION (<=);
 	    break;
 	  case OP_TO_R:
 	    PUSH_RETURN (t);
