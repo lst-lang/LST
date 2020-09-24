@@ -306,11 +306,11 @@ variable markers 3 cells allot drop
 : ?frame current-frame 0= 0= ;
 : @frame frame-template @ this-template! this-locals ;
 : push-frame @frame !mark previous-frame ;
-: push-frames begin ?frame while push-frame repeat ;
-: push-root current-frame push-frames ;
 : ?has-mark mp @ stack /stack + < ;
 : start-marking begin ?has-mark while call-marker repeat ;
-: mark current-mark start-marking ;
+: mark-frame push-frame current-mark start-marking ;
+: mark-root begin ?frame while mark-frame repeat ;
+: mark current-frame mark-root ;
 
 
 
