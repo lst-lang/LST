@@ -115,7 +115,7 @@ DEFINE ((
    (LAMBDA () (TYPE VOID)
       (PROG (SHAPES C)
          (DECLARE ((ARRAY (REFERENCE SHAPE)) SHAPES)
-	          (CIRCLE C))
+	           (CIRCLE C))
          (SETQ SHAPES (MAKEARRAY 1 (REFERENCE SHAPE)))
          (SETQ (SHAPES 0) (MAKE SHAPE))
          (SETQ (RADIUS C) 10)

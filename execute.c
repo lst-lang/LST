@@ -49,7 +49,7 @@
   TRIPLE (op (&LOWER_PARAMETER (1), &LOWER_PARAMETER (0), &_t))
 
 static void
-rot (Cell* x1, Cell *x2, Cell *x3)
+rot (Cell *x1, Cell *x2, Cell *x3)
 {
   Cell n1, n2, n3;
 
@@ -58,7 +58,7 @@ rot (Cell* x1, Cell *x2, Cell *x3)
 }
 
 static void
-minus_rot (Cell* x1, Cell *x2, Cell *x3)
+minus_rot (Cell *x1, Cell *x2, Cell *x3)
 {
   Cell n1, n2, n3;
 
