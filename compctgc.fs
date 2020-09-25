@@ -44,9 +44,10 @@ variable left-bits variable middle-cells variable right-bits
 : set-middle middle-cells @ dup 0= if drop exit then !middles ;
 : right-mask @a 0= if 0 exit then @a bits-mask invert ;
 : set-right right-bits a! right-mask swap or-mask! ;
-: set-slices set-left set-middle set-right ;
+
 
 \ gc               bitmap#3                             09-13-20
+: set-slices set-left set-middle set-right ;
 : split-set a >r split r> set-slices drop ;
 : loop-set for dup set-bit 1+ next drop ;
 : set-bits ?cross-cell if split-set exit then loop-set ;
@@ -58,7 +59,6 @@ variable left-bits variable middle-cells variable right-bits
    for dup @ cell-bits type-cell cell+ next ;
 : type-bits this-bitmap cell+ swap
    cell-bits /mod >r type-cells @ r> type-cell ;
-
 
 
 
@@ -310,7 +310,7 @@ variable markers 3 cells allot drop
 : start-marking begin ?has-mark while call-marker repeat ;
 : mark-frame push-frame current-mark start-marking ;
 : mark-root begin ?frame while mark-frame repeat ;
-: mark current-frame mark-root ;
+: mark storage-map clear-bitmap current-frame mark-root ;
 
 
 
@@ -413,17 +413,49 @@ variable root variable child variable end
 
 
 
+
 \ gc               compaction#7                         09-18-20
+variable left 1 cells allot constant right
+
+: set-map a bits+ set-bit ;
+: set-bounds break-entrys @ left a! 0 !+ !a ;
+: ?found left a! @+ @a > 0= ;
+: middle left a! @+ @a + 2 / ;
+: found 2drop left a! dup !+ !a ;
+: test-compare > if 1+ left ! exit then 1- right ! ;
+: test-equals 2dup = if found exit then test-compare ;
+: next-search middle 2dup entry @ test-equals ;
+: binary-search begin ?found 0= while next-search repeat ;
+
+
+
+
+\ gc               compaction#8                         09-25-20
+: ?exactly dup left @ entry a! @+ = ;
+: previous-offset a break-table = 0= if a 1 parcels - a! then ;
+: found-pointer ?exactly 0= if previous-offset then @a - ;
+: new-pointer set-bounds binary-search found-pointer ;
+: @updated @ dup @ new-pointer over ! ;
+: @pointer parcels-template marking-locals @updated ;
+: update-object set-map @pointer push-object ;
+: update-ptr ?unmarked if update-object exit then end-pointer ;
+
+
+
+
+
+
+
+\ gc               compaction#9                         09-25-20
 : heapify last-parent 1+ for r@ 1- sift-down next ;
 : sort dup 0 swap-entry 1- end ! 0 sift-down ;
 : heapsort heapify end @ for r@ sort next ;
 : sort-table ?need-sort if @a heapsort then ;
 : table-compact set-table build-table sort-table ;
-: compact set-walkers table-compact ;
-
-
-
-
+: save-marker markers a! @a ['] update-ptr !a ;
+: restore-marker markers ! ;
+: update-pointers save-marker mark restore-marker ;
+: compact set-walkers table-compact update-pointers ;
 
 
 
@@ -431,7 +463,7 @@ variable root variable child variable end
 
 
 \ gc               collection                           09-15-20
-: collect storage-map clear-bitmap mark compact ;
+: collect mark compact ;
 
 
 
