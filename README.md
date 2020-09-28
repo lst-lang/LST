@@ -18,9 +18,8 @@ The implementation would consist of four basic components:
 # Language
 ## Data Types
 * Basic Types: `int`, `real`, `char`, `bool`, `sexpr`, `atom`
-* Static Array: `[3] int`, `[3][4][5] real`
-* Dynamic Array: `[] char`
-* Reference/Pointer: `ref int`, `ref [3] real`, `ref [] char`
+* Array: `[3] int`, `[3][4][5] real`
+* Reference/Pointer: `ref int`, `ref [3] real`, `ref [256] char`
 * Function/Procedure: `lambda (int, int) void`
 * Structure/Record: `cartes (int, int)`
 * Structure/Record and selectors: `cartes ((length, int), (width, int))`
@@ -36,7 +35,7 @@ The implementation would consist of four basic components:
 * Goto: `prog label: a:=1; go label end`
 * Function: `fun max a b; if a>b then a else b`
 * Declaration: `decl <type> <var>,<var>...; <type> ... end`
-* Type definition: `type string = [] char`
+* Type definition: `type string = [256] char`
 
 ## Declaration
 A declaration statement specifies the type of variables and functions.
@@ -79,8 +78,7 @@ fun main;
    type void;
 prog
    vars shapes c;
-   decl [] ref shape shapes; circle c end;
-   shapes := makearray(1, ref shape);
+   decl ref [1] shape shapes; circle c end;
    shapes[0] := make(shape);
    radius(c) := 10;
    scricle(deref(shapes[0])) := c;
@@ -114,9 +112,8 @@ DEFINE ((
 (MAIN
    (LAMBDA () (TYPE VOID)
       (PROG (SHAPES C)
-         (DECLARE ((ARRAY () (REFERENCE SHAPE)) SHAPES)
+         (DECLARE ((ARRAY 1 (REFERENCE SHAPE)) SHAPES)
 	           (CIRCLE C))
-         (SETQ SHAPES (MAKEARRAY 1 (REFERENCE SHAPE)))
          (SETQ (SHAPES 0) (MAKE SHAPE))
          (SETQ (RADIUS C) 10)
          (SETQ (SCIRCLE (DEREFERENCE (SHAPES 0))) C)
