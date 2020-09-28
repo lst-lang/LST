@@ -239,9 +239,9 @@ variable 'this-template
 
 
 \ gc               mark phase#3                         09-15-20
-: ?element marking-locals @ a! @+ dup @a < ;
+: ?element marking-locals @ @ dup element-number @ < ;
 : increase-counter dup 1+ marking-locals @ ! ;
-: next-offset element-size @ * 2 cells + ;
+: next-offset element-size @ * cell+ ;
 : @element next-offset marking-locals @ + ;
 : next-object increase-counter @element ;
 : next-template element-template @ this-template! ;
