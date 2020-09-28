@@ -21,11 +21,11 @@ The implementation would consist of four basic components:
 * Static Array: `[3] int`, `[3][4][5] real`
 * Dynamic Array: `[] char`
 * Reference/Pointer: `ref int`, `ref [3] real`, `ref [] char`
-* Function/Procedure: `lambda (int int) void`
-* Structure/Record: `cartes (int int)`
-* Structure/Record and selectors: `cartes ((length int) (width int))`
-* Union: `union (int real char)`
-* Union and selectors: `union ((i int) (r real) (c char))`
+* Function/Procedure: `lambda (int, int) void`
+* Structure/Record: `cartes (int, int)`
+* Structure/Record and selectors: `cartes ((length, int), (width, int))`
+* Union: `union (int, real, char)`
+* Union and selectors: `union ((i, int), (r, real), (c, char))`
 
 ## Statements
 * Assignment: `a := 1`, `b := 3.0`
@@ -55,9 +55,9 @@ end max
 
 ## Example
 ```
-type rect = cartes ((length int) (width int));
-type circle = cartes ((radius int));
-type shape = union ((srect rect) (scircle circle));
+type rect = cartes ((length, int), (width, int));
+type circle = cartes ((radius, int));
+type shape = union ((srect, rect), (scircle, circle));
 
 fun areaofrect r;
    length(r) * width(r);
