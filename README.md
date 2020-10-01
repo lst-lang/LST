@@ -18,8 +18,8 @@ The implementation would consist of four basic components:
 # Language
 ## Data Types
 * Basic Types: `int`, `real`, `char`, `bool`, `sexpr`, `atom`
-* Array: `[3] int`, `[3][4][5] real`
-* Reference/Pointer: `ref int`, `ref [3] real`, `ref [256] char`
+* Array: `[] int`, `[][][] real`
+* Reference/Pointer: `ref int`, `ref [] int`, `ref ref [] int`
 * Function/Procedure: `lambda (int, int) void`
 * Structure/Record: `cartes (int, int)`
 * Structure/Record and selectors: `cartes ((length, int), (width, int))`
@@ -34,8 +34,8 @@ The implementation would consist of four basic components:
 * Return (in Compound or Block): `return <result>`
 * Goto: `prog label: a:=1; go label end`
 * Function: `fun max a b; if a>b then a else b`
-* Declaration: `decl <type> <var>,<var>...; <type> ... end`
-* Type definition: `type string = [256] char`
+* Type definition: `type vector = [10] int`
+* Union case: `case <var> in <sel>: <expr>; <sel>: ... end`
 
 ## Declaration
 A declaration statement specifies the type of variables and functions.
@@ -44,19 +44,19 @@ a type of `sexpr`. All types of objects can be converted to s-expressions
 and back without losing data.
 ```
 fun max a b;
-   decl int a,b end; type int;
-prog vars temp;
-   decl int temp end;
-   if a>b then temp:=a else temp:=b;
-   return temp;
+   int a,b; type int;
+prog vars t;
+   int t;
+   if a>b then t:=a else t:=b;
+   return t;
 end max
 ```
 
 ## Example
 ```
-type rect = cartes ((length, int), (width, int));
-type circle = cartes ((radius, int));
-type shape = union ((srect, rect), (scircle, circle));
+type rect = cartes ((length, int), (width, int)),
+     circle = cartes ((radius, int)),
+     shape = union ((srect, rect), (scircle, circle));
 
 fun areaofrect r;
    length(r) * width(r);
@@ -65,34 +65,29 @@ fun areaofcircle c;
    radius(c) * radius(c) * 3.14;
 
 fun areaofshape s;
-   decl shape s end; type int;
+   shape s; type int;
 prog
-   if type(s)=1 then
-      return areaofrect(srect(s))
-   else if type(s)=2 then
-      return areaofcircle(scircle(s))
-   else error("BAD SHAPE")
+   case s in
+   srect: return areaofrect(srect(s))
+   scircle: return areaofcircle(scircle(s))
+   else error("BAD SHAPE") end
 end areaofshape;
 
-fun main;
-   type void;
-prog
-   vars shapes c;
-   decl ref [1] shape shapes; circle c end;
-   shapes[0] := make(shape);
+lambda; type void;
+prog vars c;
+   ref circle c = loc circle;
    radius(c) := 10;
-   scricle(deref(shapes[0])) := c;
-   print(areaofshape(deref(shapes[0])))
-end main
+   print(areaofshape(c));
+end lambda; ();
 ```
 
 translate to s-expressions:
 ```
-DEFLIST ((
-(RECT (CARTESIAN ((LENGTH INTEGER) (WIDTH INTEGER))))
-(CIRCLE (CARTESIAN ((RADIUS INTEGER))))
-(SHAPE (UNION ((SRECT RECT) (SCIRCLE CIRCLE))))
-) TEXPR)
+DEFINE ((
+((TYPE RECT) (CARTESIAN ((LENGTH INTEGER) (WIDTH INTEGER))))
+((TYPE CIRCLE) (CARTESIAN ((RADIUS INTEGER))))
+((TYPE SHAPE) (UNION ((SRECT RECT) (SCIRCLE CIRCLE))))
+))
 
 DEFINE ((
 (AREAOFRECT
@@ -102,23 +97,19 @@ DEFINE ((
    (LAMBDA (C)
       (TIMES (RADIUS C) (RADIUS C) 3.14)))
 (AREAOFSHAPE
-   (LAMBDA (S) (DECLARE (SHAPE S)) (TYPE INTEGER)
+   (LAMBDA (S) (SHAPE S) (TYPE INTEGER)
       (PROG ()
-         (COND ((EQUAL (TYPE S) 1)
-	        (RETURN (AREAOFRECT (SRECT S))))
-               ((EQUAL (TYPE S) 2)
-	        (RETURN (AREAOFCIRCLE (SCIRCLE S))))
-               (T (ERROR "BAD SHAPE"))))))
-(MAIN
-   (LAMBDA () (TYPE VOID)
-      (PROG (SHAPES C)
-         (DECLARE ((ARRAY 1 (REFERENCE SHAPE)) SHAPES)
-	           (CIRCLE C))
-         (SETQ (SHAPES 0) (MAKE SHAPE))
-         (SETQ (RADIUS C) 10)
-         (SETQ (SCIRCLE (DEREFERENCE (SHAPES 0))) C)
-         (PRINT (AREAOFSHAPE (DEREFERENCE (SHAPES 0)))))))
+         (CASE S
+	    (SRECT (RETURN (AREAOFRECT (SRECT S))))
+            (SCIRCLE (RETURN (AREAOFCIRCLE (SCIRCLE S))))
+            (T (ERROR "BAD SHAPE"))))))
 ))
+
+(LAMBDA () (TYPE VOID)
+   (PROG (C)
+      (DEFINE ((REFERENCE CIRCLE) C) (LOCAL CIRCLE))
+      (SETQ (RADIUS C) 10)
+      (PRINT (AREAOFSHAPE C)))) ()
 ```
 
 
