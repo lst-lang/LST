@@ -48,7 +48,7 @@ fun max a b;
 prog vars t;
    int t;
    if a>b then t:=a else t:=b;
-   return t;
+   return t
 end max
 ```
 
@@ -77,8 +77,8 @@ lambda; type void;
 prog vars c;
    ref circle c = loc circle;
    radius(c) := 10;
-   print(areaofshape(c));
-end lambda; ();
+   print(areaofshape(c))
+end lambda; ()
 ```
 
 translate to s-expressions:
