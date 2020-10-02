@@ -206,8 +206,8 @@ define_words (void)
   define_macro_word ("POSTPONE,", 1);
   define_macro_word ("NUMBER,", 1);
   define_macro_word ("FIND-WORD", 0);
-  define_macro_word ("ALLOT", 0);
-  define_macro_word ("STATIC-ALLOT", 0);
+  define_macro_word ("DP+", 0);
+  define_macro_word ("SP-", 0);
   define_macro_word ("ACCEPT", 0);
   define_macro_word ("ACCEPT-INPUT", 0);
   define_macro_word ("SKIP-DELIMITERS", 0);
@@ -330,7 +330,7 @@ define_words (void)
   define_constant_word ("PICTURED", O (pictured_string));
   define_constant_word ("#PICTURED", O (number_pictured_string));
   define_constant_word ("/PICTURED", BUFFER_SIZE);
-  define_constant_word ("HERE", MEMBER_OFFSET (System, data_pointer));
+  define_constant_word ("DP", MEMBER_OFFSET (System, data_pointer));
   define_constant_word ("TP", MEMBER_OFFSET (System, static_pointer));
   define_constant_word ("IS", MEMBER_OFFSET (System, instruction_slot));
   define_constant_word ("IW", MEMBER_OFFSET (System, instruction_word));

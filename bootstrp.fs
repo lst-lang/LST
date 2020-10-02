@@ -37,7 +37,7 @@ one-minus, swap, store, ret, end,
 define, fill-nop, number, 1 postpone, fill, ret, end,
 define, if number, 55 number, -1
 postpone, slot-instruction, ret, end, immediate
-define, then postpone, fill-nop, postpone, here fetch,
+define, then postpone, fill-nop, postpone, dp fetch,
 swap, store, ret, end, immediate
 define, else number, 54 number, -1
 postpone, slot-instruction, swap,
@@ -233,10 +233,11 @@ quit
 : xor ?interp if [ xor, ] exit then xor, ; immediate
 : negate ?interp if [ negate, ] exit then negate, ; immediate
 : recurse ?interp if -14 [ throw, ] then recurse, ; immediate
-: begin fill-nop, here @ ; immediate
+: here dp @ ;
+: begin fill-nop, here ; immediate
 : while 55 -1 slot-instruction, swap ; immediate
 : repeat 54 swap slot-instruction, drop
-   fill-nop, here @ swap ! ; immediate
+   fill-nop, here swap ! ; immediate
 : until 55 swap slot-instruction, drop ; immediate
 : for to-r, postpone begin ; immediate
 : next 56 swap slot-instruction, drop ; immediate
@@ -303,7 +304,7 @@ quit
 : */ >r m* r> sm/rem swap drop ;
 : */mod >r m* r> sm/rem ;
 : +! >r r@ @ + r> ! ;
-: , 1 cells allot ! ;
+: , 1 cells dp+ ! ;
 : fm/mod dup >r sm/rem over dup 0 <> swap 0< r@ 0<
    xor and if 1- swap r> + swap else r>drop then ;
 : <postpone> 57 swap slot-instruction, drop fill-nop, ;
@@ -332,7 +333,7 @@ quit
    if r> r> 2drop r> r> 2drop [result] exit then
    2drop r> char+ next drop r> r> result ;
 : s" ?interp if -14 [ throw, ] then "
-   dup >r static-allot r@ over >r cmove
+   dup >r sp- r@ over >r cmove
    r> postpone literal r> postpone literal ; immediate
 : ." postpone s" postpone type ; immediate
 : 2! swap over ! cell+ ! ;
@@ -350,9 +351,10 @@ quit
 : <abort"> type cr -2 [ throw, ] ;
 : abort" postpone s" postpone <abort"> ; immediate
 : abs dup 0< if negate then ;
+: allot dp+ drop ;
 : align-number dup 1- invert >r + 1- r> and ;
 : aligned 1 cells align-number ;
-: c, 1 chars allot c! ;
+: c, 1 chars dp+ c! ;
 : char parse-name drop c@ ;
 : <constant> ?interp 0= if postpone literal then ;
 : constant >r 32 word count begin,
@@ -367,8 +369,7 @@ input constant input #input constant #input in constant >in
    for 2dup c! char+ next then 2drop ;
 : find dup count find-word dup 0= if exit then
    swap drop dup entry-flag + @ dup 0= if 1- then ;
-here constant here
-: align here @ aligned here ! ;
+: align here aligned dp ! ;
 : quit cr quit ;
 : s>d dup 0< if -1 else 0 then ;
 : sign 0< if '-' hold then ;
@@ -380,7 +381,7 @@ here constant here
 : [variable] 32 word count
    begin, 53 0 slot-instruction, >r
    postpone <constant> ret, end, immediate
-   allot r> ! ;
+   dp+ r> ! ;
 : variable 1 cells [variable] ;
 : ['] ' postpone literal ; immediate
 : [char] char postpone literal ; immediate
@@ -392,7 +393,7 @@ variable leaves
    leaves @ over ! leaves ! ; immediate
 : reslove-leaves fill-nop,
    begin leaves @ dup
-   while dup @ leaves ! here @ swap !
+   while dup @ leaves ! here swap !
    repeat drop ;
 : loop postpone next
    reslove-leaves r-from-drop, ; immediate
@@ -406,7 +407,7 @@ variable created 0 created !
 : nop ;
 : create parse-name begin, 53 -1 slot-instruction,
    54 ['] nop @code slot-instruction, created !
-   fill-nop, ret, swap dup >r end, align here @ dup
+   fill-nop, ret, swap dup >r end, align here dup
    r> entry-parameter + ! swap ! ;
 : [does>] created @ dup 0= if drop exit then
    r> swap ! 0 created ! ;
@@ -442,11 +443,11 @@ variable created 0 created !
    fill-nop, swap if drop, then ret, end, ;
 variable blk 0 blk !
 variable current-buffer 0 current-buffer !
-4 cells allot constant assigned-blocks
+4 cells dp+ constant assigned-blocks
 assigned-blocks 4 cells erase
-4 cells allot constant updated-buffers
+4 cells dp+ constant updated-buffers
 updated-buffers 4 cells erase
-4096 chars allot constant block-buffers
+4096 chars dp+ constant block-buffers
 : \line >in @ dup 64 mod - 64 + >in ! ;
 : \ blk @ if \line exit then #input @ >in ! ; immediate
 : assigned-block cells assigned-blocks + ;
@@ -576,7 +577,7 @@ updated-buffers 4 cells erase
    dup -78 = if drop ." MALFORMED XCHAR" exit then
    dup -79 = if drop ." SUBSTITUTE" exit then
    -80 = if ." REPLACES" exit then ;
-variable last-word 1 cells allot drop
+variable last-word 1 cells allot
 variable number-handler ' do-number number-handler !
 : interpret parse-name 2dup last-word a! !+ !a
    dup 0= if drop drop exit then over over find-word
@@ -602,14 +603,14 @@ quit
 0 macro fptrs 0 macro fopen 0 macro fclose
 0 macro fremove 0 macro fread 0 macro fwrite
 0 macro feof 0 macro ferror 0 macro fseek 0 macro ftell
-8 fptrs allot 1 fptrs - constant files
-8 cells allot dup 1 cells - constant file-flags
+8 fptrs dp+ 1 fptrs - constant files
+8 cells dp+ dup 1 cells - constant file-flags
 a! 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !+ 0 !a
 0 constant r/o 1 constant r/w 2 constant w/o
 variable line-term 10 line-term c!
 variable [source-id] 0 [source-id] !
-variable string-buffer1 128 chars allot drop
-variable string-buffer2 128 chars allot drop
+variable string-buffer1 128 chars allot
+variable string-buffer2 128 chars allot
 string-buffer1 string-buffer2 !
 string-buffer2 string-buffer1 !
 variable strbuf-pointer string-buffer1 strbuf-pointer !
@@ -674,7 +675,7 @@ variable strbuf-pointer string-buffer1 strbuf-pointer !
 : ( source-id 0 > if file( exit then postpone ( ; immediate
 : next-strbuf strbuf-pointer @ @ dup strbuf-pointer ! ;
 : s" ?interp if -14 [ throw, ] then "
-   dup >r static-allot r@ over >r cmove
+   dup >r sp- r@ over >r cmove
    r> postpone literal r> postpone literal ; immediate
 : file-s" " 128 min dup >r next-strbuf
    cell+ dup >r swap cmove r> r> ;
@@ -686,7 +687,7 @@ variable strbuf-pointer string-buffer1 strbuf-pointer !
 0 macro [floor] 0 macro [fnegate] 0 macro [frot]
 0 macro [fround] 0 macro [fswap] 0 macro [f0<]
 0 macro [f0=] 0 macro [ud>f] 0 macro [float.]
-variable fsp 32 floats allot constant fstack -1 fsp !
+variable fsp 32 floats dp+ constant fstack -1 fsp !
 : one-more-float fsp @ 1+ dup 31 >
    if -3 [ throw, ] then dup fsp ! floats fstack + ;
 : fdrop fsp @ dup 0< if -4 [ throw, ] then 1- fsp ! ;
@@ -751,8 +752,8 @@ variable fsp 32 floats allot constant fstack -1 fsp !
    2drop dup 0= if r> 2drop true exit then
    r> 0> if **base true exit then //base true ;
 : faligned 1 floats align-number ;
-: falign here @ faligned here ! ;
-: [fliteral] 1 floats static-allot dup f! ;
+: falign here faligned dp ! ;
+: [fliteral] 1 floats sp- dup f! ;
 : fliteral ?interp if -14 [ throw, ]
    then [fliteral] postpone literal postpone f@ ; immediate
 : fconstant [fliteral] >r 32 word count begin,

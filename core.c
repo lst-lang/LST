@@ -336,8 +336,8 @@ macro_key (void)
 void
 register_core_macros (void)
 {
-  register_macro ("ALLOT", (Function) allocate, 1);
-  register_macro ("STATIC-ALLOT", (Function) static_allocate, 1);
+  register_macro ("DP+", (Function) allocate, 1);
+  register_macro ("SP-", (Function) static_allocate, 1);
   register_macro ("SLOT,", (Function) macro_emit_instruction_slot, 1);
   register_macro ("INSTRUCTION,", (Function) macro_emit_instruction_word, 1);
   register_macro ("SLOT-INSTRUCTION,",
