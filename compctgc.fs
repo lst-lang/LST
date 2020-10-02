@@ -66,8 +66,8 @@ variable left-bits variable middle-cells variable right-bits
 128 cells constant /stack
 variable sp /stack allot dup sp ! constant stack
 variable fp sp cell+ fp ! variable 'this-frame
+3 cells constant /frame
 
-: /frame 3 cells ;
 : this-frame 'this-frame @ ;
 : this-locals this-frame /frame + ;
 : frame-template this-frame ;
@@ -144,8 +144,8 @@ variable free 1 cells allot constant current
 
 \ gc               mark stack#1                         09-14-20
 variable mp stack /stack + mp ! variable 'this-mark
+3 cells constant /mark 
 
-: /mark 3 cells ;
 : this-mark 'this-mark @ ;
 : marking-template this-mark ;
 : marking-locals this-mark 1 cells + ;
@@ -176,14 +176,14 @@ variable mp stack /stack + mp ! variable 'this-mark
 
 \ gc               template#1                           09-14-20
 variable 'this-template
+4 cells constant /pointer
+5 cells constant /array 
 
 : this-template 'this-template @ ;
 : template-kind this-template ;
 : template-marking this-template 1 cells + ;
-: /pointer 4 cells ;
 : object-template this-template 2 cells + ;
 : object-size this-template 3 cells + ;
-: /array 5 cells ;
 : element-template this-template 2 cells + ;
 : element-size this-template 3 cells + ;
 : element-number this-template 4 cells + ;
@@ -191,15 +191,15 @@ variable 'this-template
 
 
 \ gc               template#2                           09-14-20
+2 cells constant /field
+
 : record 3 cells + ;
 : fields-number this-template 2 cells + ;
 : tagfield 3 cells + ;
 : variants-number this-template 2 cells + ;
-: /field 2 cells ;
 : fields /field * ;
 : field-offset fields this-template + 3 cells + ;
 : field-template field-offset cell+ ;
-
 
 
 
