@@ -123,7 +123,7 @@ define, : postpone, parse-name postpone, begin,
 postpone, <false> state literal store, ret, end,
 define, ; number, 58 postpone, slot, postpone, end,
 postpone, <true> state literal store, ret, end, immediate
-define, abortx postpone, quit ret, end,
+define, abortx drop, postpone, quit ret, end,
 define, [ postpone, <true> state literal
 store, ret, end, immediate
 define, ] postpone, <false> state literal store, ret, end,
@@ -348,7 +348,7 @@ quit
 : ?dup dup if dup exit then ;
 : cr 10 emit ;
 : abort cr -1 [ throw, ] ;
-: <abort"> type cr -2 [ throw, ] ;
+: <abort"> >r swap if r> type cr -2 [ throw, ] then r> 2drop ;
 : abort" postpone s" postpone <abort"> ; immediate
 : abs dup 0< if negate then ;
 : allot dp+ drop ;
@@ -593,9 +593,10 @@ variable number-handler ' do-number number-handler !
 : quit [ clear-return-stack, ] <true> state ! <quit> ;
 : type-last last-word a! @+ @a a! dup 0> if
    for c@+ upcase emit next exit then drop ;
-: show-error dup -13 = if drop type-last '?' emit cr exit 
+: show-error dup -1 = over -2 = or if drop exit then
+   dup -13 = if drop type-last '?' emit cr exit 
    then [show-error] '!' emit cr ;
-: abortx dup -1 = over -2 = or 0= if show-error then quit ;
+: abortx show-error quit ;
 : bye [ HALT, ] ;
 quit
 
