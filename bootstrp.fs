@@ -333,7 +333,7 @@ quit
    if r> r> 2drop r> r> 2drop [result] exit then
    2drop r> char+ next drop r> r> result ;
 : s" ?interp if -14 [ throw, ] then "
-   dup >r sp- r@ over >r cmove
+   dup >r chars sp- r@ over >r cmove
    r> postpone literal r> postpone literal ; immediate
 : ." postpone s" postpone type ; immediate
 : 2! swap over ! cell+ ! ;
