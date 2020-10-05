@@ -37,10 +37,8 @@
 
 typedef int Cell;
 typedef unsigned int Unsigned_Cell;
-typedef char Character;
-typedef unsigned char Unsigned_Character;
-typedef char Byte;
-typedef unsigned char Unsigned_Byte;
+typedef unsigned char Byte;
+typedef unsigned char Character;
 typedef void (*Function)(void);
 
 struct _Frame
