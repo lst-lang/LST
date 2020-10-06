@@ -84,6 +84,7 @@ struct _System
   Terminal_Task task;
   Unsigned_Cell data_pointer, static_pointer;
   Cell instruction_slot, instruction_word;
+  Cell last_slot_offset, last_instruction_word;
   Byte dictionary[DICTIONARY_SIZE];
 };
 typedef struct _System System;

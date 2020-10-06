@@ -52,9 +52,11 @@ reset_system (void)
   sys.task.number_input_buffer = 0;
   sys.task.frames = NULL;
   sys.data_pointer = MEMBER_OFFSET (System, dictionary);
-  sys.static_pointer = sizeof (System);
+  sys.static_pointer = sys.data_pointer + DICTIONARY_SIZE;
   sys.instruction_slot = 0;
   sys.instruction_word = 0;
+  sys.last_slot_offset = 0;
+  sys.last_instruction_word = 0;
 }
 
 Frame *
@@ -154,6 +156,8 @@ emit_instruction_slot (Cell slot)
   instruction_word = sys.instruction_word - sizeof (Cell);
   word_pointer = (Cell *) (((char *) &sys) + instruction_word);
   *word_pointer |= MASK_SLOT (slot, offset);
+  sys.last_slot_offset = offset;
+  sys.last_instruction_word = instruction_word;
 }
 
 void

@@ -19,6 +19,7 @@ Cell dump (Cell, Cell);
 Cell macro_emit_instruction_slot (Cell);
 Cell macro_emit_instruction_word (Cell);
 Cell macro_fill_instruction_word (Cell);
+Cell macro_fill_nop (void);
 Cell macro_tail_recurse (void);
 Cell macro_recurse (void);
 Cell macro_define (Cell, Cell);

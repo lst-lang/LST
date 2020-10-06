@@ -71,7 +71,7 @@ _emit_call (Character *name, Cell size)
 
       e = (Entry *) A (entry_offset);
       emit_instruction_slot_and_word (OP_CALL, e->code_pointer);
-      fill_instruction_word (OP_NOP);
+      macro_fill_nop ();
     }
 }
 
@@ -95,6 +95,30 @@ emit_number (void)
 }
 
 static Cell
+tail_call_optimize (void)
+{
+  Cell slot, offset, *word_pointer;
+  Unsigned_Cell mask;
+
+  offset = sys.last_slot_offset;
+  word_pointer = (Cell *) A (sys.last_instruction_word);
+  mask = MASK_SLOT (0xff, offset);
+  slot = (*word_pointer & mask) >> (offset * BYTE_BITS);
+  if (slot == OP_CALL)
+    {
+      *word_pointer &= ~mask;
+      *word_pointer |= MASK_SLOT (OP_JMP, offset);
+      sys.last_slot_offset = 0;
+      emit_instruction_slot (OP_RET);
+    }
+  else
+    {
+      emit_instruction_slot (OP_RET);
+    }
+  return 0;
+}
+
+static Cell
 postpone (void)
 {
   Cell count, in;
@@ -106,45 +130,47 @@ postpone (void)
 }
 
 static int
-read_line (Character *output, Cell size, FILE *f)
+read_line (FILE *f)
 {
   Cell i;
-  Character c;
+  Character c, *buffer;
 
   c = 0;
-  for (i = 0; i < 128; i++)
+  buffer = sys.task.terminal_input_buffer;
+  for (i = 0; i < BUFFER_SIZE; i++)
     {
       c = fgetc (f);
       if (feof (f))
 	return -1;
       else if (c == '\n')
 	break;
-      else if (i < size)
-	output[i] = c;
+      else if (i < BUFFER_SIZE)
+	buffer[i] = c;
       else
 	break;
     }
-  return (output[0] == '\\') ? 0 : i;
+  return (buffer[0] == '\\') ? 0 : i;
 }
 
 static Cell
-accept_input (Cell c_addr, Cell u)
+accept_input (void)
 {
   static Cell loaded = 0;
   static FILE *bootstrap_file = NULL;
-  Character *output;
 
-  output = (Character *) A (c_addr);
+  sys.task.in = 0;
   if (!loaded)
     {
+      Cell length;
+
       if (bootstrap_file == NULL)
 	{
 	  bootstrap_file = fopen ("bootstrp.fs", "r");
 	  if (bootstrap_file == NULL)
 	    fatal_error ("BOOTSTRP.FS NOT FOUND");
 	}
-      u = read_line (output, u, bootstrap_file);
-      if (u == -1)
+      length = read_line (bootstrap_file);
+      if (length == -1)
 	{
 	  fclose (bootstrap_file);
 	  bootstrap_file = NULL;
@@ -153,12 +179,12 @@ accept_input (Cell c_addr, Cell u)
 	}
       else
 	{
-	  return u;
+	  return length;
 	}
     }
   else
     {
-      return macro_accept (c_addr, u);
+      return macro_accept (sys.task.input_buffer, BUFFER_SIZE);
     }
 }
 
@@ -199,9 +225,10 @@ define_words (void)
   define_macro_word ("INSTRUCTION,", 1);
   define_macro_word ("SLOT-INSTRUCTION,", 0);
   define_macro_word ("FILL,", 1);
-  define_macro_word ("TAIL-RECURSE,", 1);
+  define_macro_word ("FILL-NOP,", 1);
   define_macro_word ("RECURSE,", 1);
   define_macro_word ("BEGIN,", 0);
+  define_macro_word ("TCO,", 1);
   define_macro_word ("END,", 1);
   define_macro_word ("POSTPONE,", 1);
   define_macro_word ("NUMBER,", 1);
@@ -346,30 +373,17 @@ define_bootstrap ()
 {
   Cell label1, label2, patch1, patch2;
 
-  define ("COUNT");
-  emit_instruction_slot (OP_A_STORE);
-  emit_instruction_slot (OP_C_FETCH_PLUS);
-  emit_instruction_slot (OP_A);
-  emit_instruction_slot (OP_SWAP);
-  emit_instruction_slot (OP_RET);
-
   define ("BOOTSTRAP");
   emit_instruction_slot (OP_CLEAR_PARAMETER_STACK);
   emit_instruction_slot (OP_CLEAR_RETURN_STACK);
-  fill_instruction_word (OP_NOP);
+  macro_fill_nop ();
   label1 = sys.data_pointer;
-  emit_instruction_slot_and_word (OP_LIT, 0);
-  emit_instruction_slot_and_word (OP_LIT, O (in));
-  emit_instruction_slot (OP_STORE);
-  emit_instruction_slot_and_word (OP_LIT, O (input_buffer));
-  emit_instruction_slot (OP_FETCH);
-  emit_instruction_slot_and_word (OP_LIT, 128);
   emit_call ("ACCEPT-INPUT");
   emit_instruction_slot_and_word (OP_LIT, 10);
   emit_call ("EMIT");
   emit_instruction_slot_and_word (OP_LIT, O (number_input_buffer));
   emit_instruction_slot (OP_STORE);
-  fill_instruction_word (OP_NOP);
+  macro_fill_nop ();
   label2 = sys.data_pointer;
   emit_instruction_slot_and_word (OP_LIT, ' ');
   emit_call ("SKIP-DELIMITERS");
@@ -388,9 +402,9 @@ define_bootstrap ()
   emit_instruction_slot (OP_FETCH);
   emit_instruction_slot (OP_TO_R);  
   emit_instruction_slot (OP_EX);
-  fill_instruction_word (OP_NOP);
+  macro_fill_nop ();
   emit_instruction_slot_and_word (OP_JMP, label2);
-  fill_instruction_word (OP_NOP);
+  macro_fill_nop ();
   V (patch2) = V (patch1) = sys.data_pointer;
   emit_instruction_slot (OP_DROP);
   emit_instruction_slot (OP_DROP);
@@ -403,9 +417,10 @@ bootstrap (void)
   reset_system ();
   register_core_macros ();
   register_file_macros ();
+  register_macro ("TCO,", (Function) tail_call_optimize, 0);
   register_macro ("POSTPONE,", (Function) postpone, 0);
   register_macro ("NUMBER,", (Function) emit_number, 0);
-  register_macro ("ACCEPT-INPUT", (Function) accept_input, 2);
+  register_macro ("ACCEPT-INPUT", (Function) accept_input, 0);
   define_words ();
   define_bootstrap ();
   execute (((Entry *) A (sys.task.vocabulary))->code_pointer);

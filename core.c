@@ -34,38 +34,44 @@ is_delimiter (Character c, Character d)
 }
 
 Cell
-macro_emit_instruction_slot (Cell opcode)
+macro_emit_instruction_slot (Cell slot)
 {
-  emit_instruction_slot (opcode);
-  return opcode;
+  emit_instruction_slot (slot);
+  return slot;
 }
 
 Cell
-macro_emit_instruction_word (Cell instruction)
+macro_emit_instruction_word (Cell word)
 {
-  emit_instruction_word (instruction);
-  return instruction;
+  emit_instruction_word (word);
+  return word;
 }
 
 Cell
-macro_fill_instruction_word (Cell opcode)
+macro_fill_instruction_word (Cell slot)
 {
-  fill_instruction_word (opcode);
-  return opcode;
+  fill_instruction_word (slot);
+  return slot;
 }
 
 Cell
-macro_tail_recurse (void)
+macro_fill_nop (void)
 {
-  emit_instruction_slot_and_word (OP_JMP, sys.task.recursive);
-  return sys.task.vocabulary;
+  Cell offset, instruction_word;
+
+  offset = sys.last_slot_offset;
+  instruction_word = sys.last_instruction_word;
+  fill_instruction_word (OP_NOP);
+  sys.last_slot_offset = offset;
+  sys.last_instruction_word = instruction_word;
+  return 0;
 }
 
 Cell
 macro_recurse (void)
 {
   emit_instruction_slot_and_word (OP_CALL, sys.task.recursive);
-  fill_instruction_word (OP_NOP);
+  macro_fill_nop ();
   return sys.task.vocabulary;
 }
 
@@ -343,7 +349,7 @@ register_core_macros (void)
   register_macro ("SLOT-INSTRUCTION,",
 		  (Function) emit_instruction_slot_and_word, 2);
   register_macro ("FILL,", (Function) macro_fill_instruction_word, 1);
-  register_macro ("TAIL-RECURSE,", (Function) macro_tail_recurse, 0);
+  register_macro ("FILL-NOP,", (Function) macro_fill_nop, 0);
   register_macro ("RECURSE,", (Function) macro_recurse, 0);
   register_macro ("BEGIN,", (Function) macro_define, 2);
   register_macro ("END,", (Function) macro_end_define, 1);

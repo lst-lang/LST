@@ -20,113 +20,112 @@
 \ forth              interpreter                        09-06-20
 number 0 number -1
 begin, parse-name number, 32 postpone, skip-delimiters
-number, 32 postpone, find-delimiter ret, end,
+number, 32 postpone, find-delimiter tco, end,
 number 0 number -1
 begin, define, postpone, parse-name
-postpone, begin, ret, end,
-define, <true> number, 0 true, ret, end,
-define, <false> number, 0 false, ret, end,
-define, char+ char-size literal plus, ret, end,
-define, cell+ cell-size literal plus, ret, end,
-define, chars char-size literal star, ret, end,
-define, cells cell-size literal star, ret, end,
+postpone, begin, tco, end,
+define, <true> number, 0 true, tco, end,
+define, <false> number, 0 false, tco, end,
+define, char+ char-size literal plus, tco, end,
+define, cell+ cell-size literal plus, tco, end,
+define, chars char-size literal star, tco, end,
+define, cells cell-size literal star, tco, end,
 define, inc dup, fetch,
-one-plus, swap, store, ret, end,
+one-plus, swap, store, tco, end,
 define, dec dup, fetch,
-one-minus, swap, store, ret, end,
-define, fill-nop, number, 1 postpone, fill, ret, end,
+one-minus, swap, store, tco, end,
 define, if number, 55 number, -1
-postpone, slot-instruction, ret, end, immediate
+postpone, slot-instruction, tco, end, immediate
 define, then postpone, fill-nop, postpone, dp fetch,
-swap, store, ret, end, immediate
+swap, store, tco, end, immediate
 define, else number, 54 number, -1
 postpone, slot-instruction, swap,
-postpone, then ret, end, immediate
+postpone, then tco, end, immediate
 define, ?lower dup, number, 96 greater-than,
-swap, number, 123 less-than, and, ret, end,
+swap, number, 123 less-than, and, tco, end,
 define, ?upper dup, number, 64 greater-than,
-swap, number, 91 less-than, and, ret, end,
+swap, number, 91 less-than, and, tco, end,
 define, ?alpha dup, postpone, ?upper
-swap, postpone, ?lower or, ret, end,
+swap, postpone, ?lower or, tco, end,
 define, ?digit dup, number, 47 greater-than,
-swap, number, 58 less-than, and, ret, end,
+swap, number, 58 less-than, and, tco, end,
 define, ?space dup, number, 10 equals, over,
 number, 13 equals, or, over, number, 9 equals,
-or, swap, number, 32 equals, or, ret, end,
+or, swap, number, 32 equals, or, tco, end,
 define, downcase dup, postpone, ?upper
-if number, 32 plus, then ret, end,
+if number, 32 plus, then tco, end,
 define, upcase dup, postpone, ?lower
-if number, 32 minus, then ret, end,
-define, incin in literal postpone, inc ret, end,
+if number, 32 minus, then tco, end,
+define, incin in literal postpone, inc tco, end,
 define, @digit over, in literal fetch,
-postpone, chars plus, c-fetch, ret, end,
+postpone, chars plus, c-fetch, tco, end,
 define, sign postpone, @digit number, 45 equals,
-if postpone, incin number, -1 ret, then
-number, 1 ret, end,
+if postpone, incin number, -1 tco, then
+number, 1 tco, end,
 define, <basenum> base literal dup, fetch, to-r,
 store, postpone, sign to-r, to-r, to-r,
 r-from, in literal fetch, postpone, chars
 plus, r-from, in literal fetch, minus,
 postpone, parse-number
 r-from, r-from, base literal store, to-r,
-r-from, star, ret, end,
+r-from, star, tco, end,
 define, basenum drop, base literal fetch,
-postpone, <basenum> ret, end,
+postpone, <basenum> tco, end,
 define, decnum drop, postpone, incin number, 10
-postpone, <basenum> ret, end,
+postpone, <basenum> tco, end,
 define, hexnum drop, postpone, incin number, 16
-postpone, <basenum> ret, end,
+postpone, <basenum> tco, end,
 define, binnum drop, postpone, incin number, 2
-postpone, <basenum> ret, end,
+postpone, <basenum> tco, end,
 define, cnum drop, number, 3 not-equals,
 if number, -13 throw, then postpone, char+ dup, c-fetch,
 to-r, postpone, char+ c-fetch, number, 39 not-equals,
-if number, -13 throw, then r-from, ret, end,
+if number, -13 throw, then r-from, tco, end,
 define, ?bdigit dup, postpone, ?digit swap,
-postpone, ?alpha or, ret, end,
+postpone, ?alpha or, tco, end,
 define, anynum postpone, @digit
-dup, number, 45 equals, if postpone, basenum ret, then
-dup, number, 35 equals, if postpone, decnum ret, then
-dup, number, 36 equals, if postpone, hexnum ret, then
-dup, number, 37 equals, if postpone, binnum ret, then
-dup, number, 39 equals, if postpone, cnum ret, then
-dup, postpone, ?bdigit if postpone, basenum ret, then
-number, -13 throw, ret, end,
+dup, number, 45 equals, if postpone, basenum tco, then
+dup, number, 35 equals, if postpone, decnum tco, then
+dup, number, 36 equals, if postpone, hexnum tco, then
+dup, number, 37 equals, if postpone, binnum tco, then
+dup, number, 39 equals, if postpone, cnum tco, then
+dup, postpone, ?bdigit if postpone, basenum tco, then
+number, -13 throw, tco, end,
 define, do-number in literal dup, fetch, to-r,
 number, 0 swap, store, dup, zero-equals,
 if number, -13 throw, then postpone, anynum
 r-from, in literal store, state literal
-fetch, if ret, then postpone, literal ret, end,
+fetch, if tco, then postpone, literal tco, end,
 define, @code entry-code literal plus, fetch,
-ret, end,
+tco, end,
 define, do-word state literal fetch, over,
 entry-flag literal plus, fetch, or,
 if postpone, @code to-r, ex,
-fill-nop, ret, then postpone, @code
+fill-nop, tco, then postpone, @code
 number, 57 swap, postpone, slot-instruction, drop,
-postpone, fill-nop, ret, end,
+postpone, fill-nop, tco, end,
 define, interpret postpone, parse-name
-dup, zero-equals, if drop, drop, ret, then
+dup, zero-equals, if drop, drop, tco, then
 over, over, postpone, find-word dup, zero-equals,
-if drop, postpone, do-number tail-recurse, then
+if drop, postpone, do-number recurse, tco, then
 to-r, drop, drop, r-from, postpone, do-word
-tail-recurse, ret, end,
-define, <quit> tib literal dup, input literal store,
-/tib literal postpone, accept-input
+recurse, tco, end,
+define, <quit> tib literal input literal store,
+postpone, accept-input
 #input literal store, number, 0 in literal
 store, postpone, interpret
 number, 79 postpone, emit number, 75 postpone, emit
-number, 10 postpone, emit tail-recurse, ret, end,
+number, 10 postpone, emit recurse, tco, end,
 define, quit clear-return-stack, postpone, <true>
-state literal store, postpone, <quit> ret, end,
+state literal store, postpone, <quit> tco, end,
 define, : postpone, parse-name postpone, begin,
-postpone, <false> state literal store, ret, end,
-define, ; number, 58 postpone, slot, postpone, end,
-postpone, <true> state literal store, ret, end, immediate
-define, abortx drop, postpone, quit ret, end,
+postpone, <false> state literal store, tco, end,
+define, ; postpone, tco, postpone, end,
+postpone, <true> state literal store, tco, end, immediate
+define, abortx drop, postpone, quit tco, end,
 define, [ postpone, <true> state literal
-store, ret, end, immediate
-define, ] postpone, <false> state literal store, ret, end,
+store, tco, end, immediate
+define, ] postpone, <false> state literal store, tco, end,
 quit
 
 \ forth              core & block word sets             09-06-20
@@ -135,7 +134,7 @@ quit
 : [literal] literal ; immediate
 : literal ?interp if -14 [ throw, ] then literal ; immediate
 : postpone postpone, ; immediate
-: exit ret, ; immediate
+: exit tco, ; immediate
 : a ?interp if [ a, ] exit then a, ; immediate
 : a! ?interp if [ a-store, ] exit then a-store, ; immediate
 : !a ?interp if [ store-a, ] exit then store-a, ; immediate
@@ -297,7 +296,7 @@ quit
    negate >r dnegate r> um/mod negate ;
 : <um*> dup 1 u>= if dup 1 and
    if >r 2dup >r >r d+ r> r> r> then u2/ >r d2* r>
-   [ tail-recurse, ] then ;
+   recurse then ;
 : um* >r >r 0 0 r> r> swap >r 0 r> <um*> 2drop drop ;
 : m* over 0< over 0< <> >r dup 0< if negate then
    swap dup 0< if negate then um* r> if dnegate then ;
@@ -356,10 +355,11 @@ quit
 : aligned 1 cells align-number ;
 : c, 1 chars dp+ c! ;
 : char parse-name drop c@ ;
+: count a! c@+ a swap ;
 : <constant> ?interp 0= if postpone literal then ;
 : constant >r 32 word count begin,
    53 r> slot-instruction, drop
-   postpone <constant> ret, end, immediate ;
+   postpone <constant> tco, end, immediate ;
 base constant base 32 constant bl
 : decimal 10 base ! ;
 input constant input #input constant #input in constant >in
@@ -380,7 +380,7 @@ input constant input #input constant #input in constant >in
 : u. 0 ud. ;
 : [variable] 32 word count
    begin, 53 0 slot-instruction, >r
-   postpone <constant> ret, end, immediate
+   postpone <constant> tco, end, immediate
    dp+ r> ! ;
 : variable 1 cells [variable] ;
 : ['] ' postpone literal ; immediate
@@ -407,7 +407,7 @@ variable created 0 created !
 : nop ;
 : create parse-name begin, 53 -1 slot-instruction,
    54 ['] nop @code slot-instruction, created !
-   fill-nop, ret, swap dup >r end, align here dup
+   fill-nop, tco, swap dup >r end, align here dup
    r> entry-parameter + ! swap ! ;
 : [does>] created @ dup 0= if drop exit then
    r> swap ! 0 created ! ;
@@ -440,7 +440,7 @@ variable created 0 created !
    erase-cells r> 1 chars / erase-chars ;
 : macro parse-name begin,
    82 over entry-name + slot-instruction, drop
-   fill-nop, swap if drop, then ret, end, ;
+   fill-nop, swap if drop, then tco, end, ;
 variable blk 0 blk !
 variable current-buffer 0 current-buffer !
 4 cells dp+ constant assigned-blocks
@@ -581,15 +581,16 @@ variable last-word 1 cells allot
 variable number-handler ' do-number number-handler !
 : interpret parse-name 2dup last-word a! !+ !a
    dup 0= if drop drop exit then over over find-word
-   dup 0= if drop number-handler @ execute [ tail-recurse, ]
-   then >r drop drop r> do-word [ tail-recurse, ] ;
+   dup 0= if drop number-handler @ execute recurse
+ exit
+   then >r drop drop r> do-word recurse ;
 : evaluate save-inputs #input ! input !
    0 >in ! 0 blk ! interpret restore-inputs ;
 : load save-inputs dup blk ! 1024 #input !
    0 >in ! block input ! interpret
    blk @ unassign restore-inputs ;
-: <quit> tib dup input ! /tib accept-input #input ! 0 >in !
-   interpret ." OK" cr [ tail-recurse, ] ;
+: <quit> tib input ! accept-input #input ! 0 >in !
+   interpret ." OK" cr recurse ;
 : quit [ clear-return-stack, ] <true> state ! <quit> ;
 : type-last last-word a! @+ @a a! dup 0> if
    for c@+ upcase emit next exit then drop ;
@@ -758,7 +759,7 @@ variable fsp 32 floats dp+ constant fstack -1 fsp !
 : fliteral ?interp if -14 [ throw, ]
    then [fliteral] postpone literal postpone f@ ; immediate
 : fconstant [fliteral] >r 32 word count begin,
-   53 r> slot-instruction, drop postpone f@ ret, end, ;
+   53 r> slot-instruction, drop postpone f@ tco, end, ;
 : fvariable 1 floats [variable] ;
 : significand >r >r uf>d <# #s #> r>
    swap r> swap over min dup >r swap over 
