@@ -623,7 +623,7 @@ variable strbuf-pointer string-buffer1 strbuf-pointer !
 : id>flag cells file-flags + ;
 : open-file find-unused dup -1 =
    if dup exit then dup >r id>file fopen r> swap
-   over if exit then true over id>flag ! ;
+   dup if exit then over true swap id>flag ! ;
 : ?bad-id dup 0 < swap 7 > or ;
 : close-file dup ?bad-id if drop 0 exit then
    dup id>flag dup >r @ if 0 r> ! id>file fclose exit then
