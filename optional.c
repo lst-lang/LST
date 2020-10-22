@@ -20,10 +20,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <setjmp.h>
-#include "system.h"
-#include "macro.h"
 #include "execute.h"
-#include "core.h"
 #include "optional.h"
 
 typedef float Floating;
@@ -54,14 +51,14 @@ make_c_string (Cell c_addr, Cell u)
   return name;
 }
 
-Cell
-macro_fptrs (Cell u)
+static Cell
+files (Cell u)
 {
   return u * sizeof (FILE *);
 }
 
-Cell
-macro_fopen (Cell c_addr, Cell u, Cell fam, Cell fp)
+static Cell
+_fopen (Cell c_addr, Cell u, Cell fam, Cell fp)
 {
   static char *fam_to_mode[6] =
     { "r", "r+", "w", "rb", "rb+", "wb" };
@@ -73,10 +70,7 @@ macro_fopen (Cell c_addr, Cell u, Cell fam, Cell fp)
   free (name);
   if (f != NULL)
     {
-      FILE **p;
-
-      p = (FILE **) A (fp);
-      *p = f;
+      *(FILE **) A (fp) = f;
       return 0;
     }
   else
@@ -85,17 +79,14 @@ macro_fopen (Cell c_addr, Cell u, Cell fam, Cell fp)
     }
 }
 
-Cell
-macro_fclose (Cell fp)
+static Cell
+_fclose (Cell fp)
 {
-  FILE *f;
-
-  f = *(FILE **) A (fp);
-  return fclose (f);
+  return fclose (*(FILE **) A (fp));
 }
 
-Cell
-macro_fremove (Cell c_addr, Cell u)
+static Cell
+_fremove (Cell c_addr, Cell u)
 {
   int result;
   char *name;
@@ -106,103 +97,87 @@ macro_fremove (Cell c_addr, Cell u)
   return result;
 }
 
-Cell
-macro_fread (Cell c_addr, Cell u, Cell fp)
+static Cell
+_fgetc (Cell fp)
 {
-  size_t result;
-  Character *string;
-  FILE *f;
-
-  f = *(FILE **) A (fp);
-  string = (Character *) A (c_addr);
-  result = fread ((char *) string, sizeof (Character), u, f);
-  return result / sizeof (Character);
+  return fgetc (*(FILE **) A (fp));
 }
 
-Cell
-macro_fwrite (Cell c_addr, Cell u, Cell fp)
+static Cell
+_fputc (Cell c, Cell fp)
 {
-  size_t result;
-  Character *string;
-  FILE *f;
-
-  f = *(FILE **) A (fp);
-  string = (Character *) A (c_addr);
-  result = fwrite ((char *) string, sizeof (Character), u, f);
-  return result / sizeof (Character);
+  return fputc (c, *(FILE **) A (fp));
 }
 
-Cell
-macro_feof (Cell fp)
+static Cell
+_feof (Cell fp)
 {
-  return feof(*(FILE **) A (fp));
+  return feof (*(FILE **) A (fp));
 }
 
-Cell
-macro_ferror (Cell fp)
+static Cell
+_ferror (Cell fp)
 {
-  return ferror(*(FILE **) A (fp));
+  return ferror (*(FILE **) A (fp));
 }
 
-Cell
-macro_fseek (Cell offset, Cell fp, Cell from)
+static Cell
+_fseek (Cell offset, Cell fp, Cell from)
 {
-  return (fseek (*(FILE **) A (fp),
-		offset * sizeof (Character), from)
-	  / sizeof (Character));
-		
+  return fseek (*(FILE **) A (fp),
+		offset * sizeof (Character), from);
 }
 
-Cell
-macro_ftell (Cell fp)
+static Cell
+_ftell (Cell fp)
 {
   return ftell (*(FILE **) A (fp)) / sizeof (Character);
 }
 
-Cell
-macro_f_store (Cell r, Cell f_addr)
+static Cell
+f_store (Cell r, Cell f_addr)
 {
   return (Cell) (*(Floating *) A (f_addr) = *(Floating *) A (r));
 }
 
-Cell
-macro_f_star (Cell r1, Cell r2)
+static Cell
+f_star (Cell r1, Cell r2)
 {
   return (Cell) (*(Floating *) A (r2) *= *(Floating *) A (r1));
 }
 
-Cell
-macro_f_plus (Cell r1, Cell r2)
+static Cell
+f_plus (Cell r1, Cell r2)
 {
   return (Cell) (*(Floating *) A (r2) += *(Floating *) A (r1));
 }
 
-Cell
-macro_f_minus (Cell r1, Cell r2)
+static Cell
+f_minus (Cell r1, Cell r2)
 {
   return (Cell) (*(Floating *) A (r2) -= *(Floating *) A (r1));
 }
 
-Cell
-macro_f_slash (Cell r1, Cell r2)
+static Cell
+f_slash (Cell r1, Cell r2)
 {
   return (Cell) (*(Floating *) A (r2) /= *(Floating *) A (r1));
 }
 
-Cell
-macro_f_less_than (Cell r1, Cell r2)
+static Cell
+f_less_than (Cell r1, Cell r2)
 {
   return (*(Floating *) A (r1) < *(Floating *) A (r2)) ? -1 : 0;
 }
 
-Cell
-macro_floats (Cell n)
+static Cell
+floats (Cell n)
 {
   return n * sizeof (Floating);
 }
 
-Cell
-macro_floor (Cell r)
+static Cell
+_floor (Cell r)
 {
   Cell n;
 
@@ -211,14 +186,14 @@ macro_floor (Cell r)
   return n;
 }
 
-Cell
-macro_fnegate (Cell r)
+static Cell
+fnegate (Cell r)
 {
   return (Cell) ((*(Floating *) A (r)) = -(*(Floating *) A (r)));
 }
 
-Cell
-macro_frot (Cell r)
+static Cell
+frot (Cell r)
 {
   Floating *r1, *r2, *r3, t;
 
@@ -231,8 +206,8 @@ macro_frot (Cell r)
   return (Cell) (*r2 = t);
 }
 
-Cell
-macro_fround (Cell r)
+static Cell
+fround (Cell r)
 {
   Cell n;
   Floating x;
@@ -243,8 +218,8 @@ macro_fround (Cell r)
   return n;
 }
 
-Cell
-macro_fswap (Cell r)
+static Cell
+fswap (Cell r)
 {
   Floating *r1, *r2, t;
 
@@ -255,20 +230,20 @@ macro_fswap (Cell r)
   return (Cell) (*r1 = t);
 }
 
-Cell
-macro_f_zero_less_than (Cell r)
+static Cell
+f_zero_less_than (Cell r)
 {
   return (*(Floating *) A (r) < 0) ? -1 : 0;
 }
 
-Cell
-macro_f_zero_equals (Cell r)
+static Cell
+f_zero_equals (Cell r)
 {
   return (*(Floating *) A (r) == 0) ? -1 : 0;
 }
 
-Cell
-macro_ud_to_f (Cell l, Cell h, Cell r)
+static Cell
+ud_to_f (Cell l, Cell h, Cell r)
 {
   static Unsigned_Cell zero = 0;
   Floating x, fh, fl, fz;
@@ -281,8 +256,8 @@ macro_ud_to_f (Cell l, Cell h, Cell r)
   return (Cell) x;
 }
 
-Cell
-macro_dump (Cell addr, Cell u)
+static Cell
+dump (Cell addr, Cell u)
 {
   unsigned int i, j;
   int *word, *end;
@@ -293,8 +268,8 @@ macro_dump (Cell addr, Cell u)
   end = (int *) ((char *) word + u);
   while (word < end)
     {
-      printf ("%08lx  ", (unsigned long)
-	      ((char *) word - (char *) &sys));
+      printf ("%08ld  ", (unsigned long)
+	      ((char *) word - (char *) &dictionary));
       for (i = 0; i < sizeof (int); i++)
         printf ("%02x ", ((unsigned char *) word)[i]);
       printf ("    %-12d", *(int *) word);
@@ -311,102 +286,14 @@ macro_dump (Cell addr, Cell u)
   return u;
 }
 
-Cell
-macro_see (void)
-{
-  static char *opcode_names[] =
-    {
-     "HALT",
-     "NOP", "DUP", "SWAP", "DROP", "OVER",
-     "ROT", "MINUS_ROT", "NIP", "TUCK",
-     "ROT_DROP", "ROT_DROP_SWAP",
-     "PLUS", "MINUS", "STAR", "SLASH",
-     "U_PLUS", "U_MINUS", "U_STAR", "U_SLASH",
-     "ONE_PLUS", "ONE_MINUS", "INVERT", "AND", "OR", "XOR",
-     "TWO_STAR", "U_TWO_SLASH", "TWO_SLASH", "R_SHIFT", "L_SHIFT",
-     "TRUE", "FALSE", "ZERO_EQUALS", "ZERO_LESS",
-     "U_GREATER_THAN", "U_LESS_THAN", "EQUALS",
-     "U_GREATER_EQUALS", "U_LESS_EQUALS", "NOT_EQUALS",
-     "GREATER_THAN", "LESS_THAN", "GREATER_EQUALS", "LESS_EQUALS",
-     "TO_R", "R_FROM", "R_FETCH", "R_FROM_DROP",
-     "FETCH", "STORE", "C_FETCH", "C_STORE", "LIT",
-     "JMP", "JZ", "DRJNE", "CALL", "RET", "EX",
-     "A", "A_STORE", "FETCH_A", "STORE_A", "FETCH_PLUS", "STORE_PLUS",
-     "FETCH_R", "STORE_R",
-     "C_FETCH_A", "C_STORE_A", "C_FETCH_PLUS", "C_STORE_PLUS",
-     "C_FETCH_R", "C_STORE_R",
-     "PICK", "R_PICK", "DEPTH", "MOD", "U_MOD", "NEGATE",
-     "THROW", "CATCH", "MACRO", "MACRO",
-     "CLEAR_PARAMETER_STACK", "CLEAR_RETURN_STACK", "DOT_S"
-    };
-  Cell i, *word, *next;
-  Entry *e;
-  Cell count, in;
-  
-  in = macro_skip_delimiters (' ');
-  count = macro_find_delimiter (' ');
-  i = find_word ((Character *) A (in), count);
-  if (i == 0)
-    THROW (-13);
-  printf (": ");
-  e = (Entry *) A (i);
-  for (i = 0; i < e->name[0]; i++)
-    putchar (e->name[i + 1]);
-  word = (Cell *) A (e->code_pointer);
-  next = word + 1;
-  for (;;)
-    {
-      for (i = 0; i < (Cell) sizeof (Cell); i++)
-	switch ((((Unsigned_Cell) *word) >> (i * 8)) & 0xff)
-	  {
-	  case OP_HALT:
-	    printf (" ;");
-	    goto ret;
-	  case OP_LIT: case OP_JMP: case OP_DRJNE: case OP_CALL:
-	  case OP_JZ: case OP_MACRO: case _OP_MACRO:
-	    printf (" %s",
-		    opcode_names[(((Unsigned_Cell) *word) >> (i * 8))
-				 & 0xff]);
-	    printf (" %d", (int) *next);
-	    next++;
-	    break;
-	  default:
-	    printf (" %s",
-		    opcode_names[(((Unsigned_Cell) *word) >> (i * 8))
-				 & 0xff]);
-	    break;
-	  }
-      word = next;
-      next = word + 1;
-    }
- ret:
-  return 0;
-}
-
-Cell
-macro_words (void)
-{
-  int i, offset;
-  Entry *e;
-
-  for (offset = sys.task.vocabulary; offset != 0; offset = e->link)
-    {
-      e = (Entry *) A (offset);
-      for (i = 0; i < e->name[0]; i++)
-	putchar (e->name[i + 1]);
-      putchar (32);
-    }
-  return 0;
-}
-
-Cell
-macro_int_dot (Cell n)
+static Cell
+int_dot (Cell n)
 {
   return printf ("%d(%u) ", (int) n, (unsigned) n);
 }
 
-Cell
-macro_long_dot (Cell low, Cell high)
+static Cell
+long_dot (Cell low, Cell high)
 {
   long d;
 
@@ -416,45 +303,42 @@ macro_long_dot (Cell low, Cell high)
   return printf ("%ld:%lu ", d, d);
 }
 
-Cell
-macro_float_dot (Cell r)
+static Cell
+float_dot (Cell r)
 {
-  return printf ("%f ", (*(Floating *) A (r)));
+  return printf ("%f", (*(Floating *) A (r)));
 }
 
 void
-register_file_macros (void)
+optional (void)
 {
-  register_macro ("FPTRS", (Function) macro_fptrs, 1);
-  register_macro ("FOPEN", (Function) macro_fopen, 4);
-  register_macro ("FCLOSE", (Function) macro_fclose, 1);
-  register_macro ("FREMOVE", (Function) macro_fremove, 2);
-  register_macro ("FREAD", (Function) macro_fread, 3);
-  register_macro ("FWRITE", (Function) macro_fwrite, 3);
-  register_macro ("FEOF", (Function) macro_feof, 1);
-  register_macro ("FERROR", (Function) macro_ferror, 1);
-  register_macro ("FSEEK", (Function) macro_fseek, 3);
-  register_macro ("FTELL", (Function) macro_ftell, 1);
-  register_macro ("[F!]", (Function) macro_f_store, 2);
-  register_macro ("[F*]", (Function) macro_f_star, 2);
-  register_macro ("[F+]", (Function) macro_f_plus, 2);
-  register_macro ("[F-]", (Function) macro_f_minus, 2);
-  register_macro ("[F/]", (Function) macro_f_slash, 2);
-  register_macro ("[F<]", (Function) macro_f_less_than, 2);
-  register_macro ("FLOATS", (Function) macro_floats, 1);
-  register_macro ("[FLOOR]", (Function) macro_floor, 1);
-  register_macro ("[FNEGATE]", (Function) macro_fnegate, 1);
-  register_macro ("[FROT]", (Function) macro_frot, 1);
-  register_macro ("[FROUND]", (Function) macro_fround, 1);
-  register_macro ("[FSWAP]", (Function) macro_fswap, 1);
-  register_macro ("[F0<]", (Function) macro_f_zero_less_than, 1);
-  register_macro ("[F0=]", (Function) macro_f_zero_equals, 1);
-  register_macro ("[UD>F]", (Function) macro_ud_to_f, 3);
-  register_macro ("KEY", (Function) macro_key, 0);
-  register_macro ("DUMP", (Function) macro_dump, 2);
-  register_macro ("SEE", (Function) macro_see, 0);
-  register_macro ("WORDS", (Function) macro_words, 0);
-  register_macro ("INT.", (Function) macro_int_dot, 1);
-  register_macro ("LONG.", (Function) macro_long_dot, 2);
-  register_macro ("[FLOAT.]", (Function) macro_float_dot, 1);
+  function ("FILES", (Callable) files, 1);
+  function ("FOPEN", (Callable) _fopen, 4);
+  function ("FCLOSE", (Callable) _fclose, 1);
+  function ("FREMOVE", (Callable) _fremove, 2);
+  function ("FGETC", (Callable) _fgetc, 1);
+  function ("FPUTC", (Callable) _fputc, 2);
+  function ("FEOF", (Callable) _feof, 1);
+  function ("FERROR", (Callable) _ferror, 1);
+  function ("FSEEK", (Callable) _fseek, 3);
+  function ("FTELL", (Callable) _ftell, 1);
+  function ("!F!", (Callable) f_store, 2);
+  function ("!F*", (Callable) f_star, 2);
+  function ("!F+", (Callable) f_plus, 2);
+  function ("!F-", (Callable) f_minus, 2);
+  function ("!F/", (Callable) f_slash, 2);
+  function ("!F<", (Callable) f_less_than, 2);
+  function ("FLOATS", (Callable) floats, 1);
+  function ("!FLOOR", (Callable) _floor, 1);
+  function ("!FNEGATE", (Callable) fnegate, 1);
+  function ("!FROT", (Callable) frot, 1);
+  function ("!FROUND", (Callable) fround, 1);
+  function ("!FSWAP", (Callable) fswap, 1);
+  function ("!F0<", (Callable) f_zero_less_than, 1);
+  function ("!F0=", (Callable) f_zero_equals, 1);
+  function ("UD>!F", (Callable) ud_to_f, 3);
+  routine ("DUMP", (Callable) dump, 2);
+  routine ("INT.", (Callable) int_dot, 1);
+  routine ("LONG.", (Callable) long_dot, 2);
+  routine ("FLOAT.", (Callable) float_dot, 1);
 }

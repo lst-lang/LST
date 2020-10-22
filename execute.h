@@ -15,6 +15,47 @@
 *   along with LST.  If not, see https://www.gnu.org/licenses.                *
 ******************************************************************************/
 
+#define BYTE_BITS 8
+#define STACK_SIZE 64
+#define BUFFER_SIZE 128
+#define ENTRY_NAME_SIZE 32
+#define DICTIONARY_SIZE 64000
+#define MACRO_STACK_SIZE 4
+
+#define ADDRESS_OF(o) (dictionary + (o))
+#define A(o) ADDRESS_OF (o)
+#define VALUE_OF(o) (*(Cell *) A (o))
+#define V(o) VALUE_OF (o)
+#define C_VALUE_OF(o) (*(Character *) A (o))
+#define CV(o) C_VALUE_OF (o)
+#define ALIGN(a, b) ((a + b - 1) & (~(b - 1)))
+#define THROW(n) longjmp (jmpbuf, n)
+#define CATCH setjmp (jmpbuf)
+#define EMPTY_SLOT(o) ~((Unsigned_Cell) 0xff << (o * BYTE_BITS))
+#define MASK_SLOT(c,o) ((c & (Unsigned_Cell) 0xff) << (o * BYTE_BITS))
+
+typedef int Cell;
+typedef unsigned int Unsigned_Cell;
+typedef unsigned char Byte;
+typedef unsigned char Character;
+typedef void (*Callable) (void);
+typedef Cell (*Callable_Invoker) (Callable);
+
+struct _Entry
+{
+  Character name[ENTRY_NAME_SIZE];
+  Cell code_pointer, parameter, flag, link;
+};
+typedef struct _Entry Entry;
+
+struct _Macro
+{
+  Callable invokee;
+  Callable_Invoker invoker;
+  Cell arguments_number;
+};
+typedef struct _Macro Macro;
+
 enum _Opcode
   {
    OP_HALT = 0,
@@ -35,11 +76,31 @@ enum _Opcode
    OP_A, OP_A_STORE, OP_FETCH_A, OP_STORE_A, OP_FETCH_PLUS, OP_STORE_PLUS,
    OP_FETCH_R, OP_STORE_R,
    OP_C_FETCH_A, OP_C_STORE_A, OP_C_FETCH_PLUS, OP_C_STORE_PLUS,
-   OP_C_FETCH_R, OP_C_STORE_R,
+   OP_C_FETCH_R, OP_C_STORE_R, OP_SAVE, OP_RESTORE,
    OP_PICK, OP_R_PICK, OP_DEPTH, OP_MOD, OP_U_MOD, OP_NEGATE,
-   OP_THROW, OP_CATCH, OP_MACRO, _OP_MACRO,
-   OP_CLEAR_PARAMETER_STACK, OP_CLEAR_RETURN_STACK, OP_DOT_S
+   OP_MACRO, OP_CLEAR_PARAMETER_STACK, OP_CLEAR_RETURN_STACK, OP_DOT_S
   };
 typedef enum _Opcode Opcode;
 
+extern jmp_buf jmpbuf;
+extern Cell *data_pointer, *vocabulary;
+extern Byte dictionary[];
+extern Cell macro_stack[];
+extern Character *terminal_input_buffer;
+extern Cell *input_buffer, *number_input_buffer, *in;
+extern Cell *instruction_slot, *instruction_word, *state;
+extern Cell *exception_handler;
+
+void fatal_error (char *);
+void put_string (FILE *, Character *, Cell);
+void reset_system (void);
+Cell allocate (Cell);
+Cell vocabulary_allocate (Cell);
+void emit_instruction_slot (Cell);
+void emit_instruction_word (Cell);
+void fill_instruction_word (Cell);
+void define (Character *, Cell, Cell);
+Cell find_word (Character *, Cell);
+Cell function (char *, Callable, int);
+Cell routine (char *, Callable, int);
 void execute (Cell);

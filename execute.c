@@ -17,10 +17,24 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <setjmp.h>
-#include "system.h"
-#include "macro.h"
+#include <ctype.h>
 #include "execute.h"
+
+#define DEFINEINVOKER(n,l)			\
+  static Cell invoke_##n (Callable f)		\
+  {						\
+    Callable_##n f##n;				\
+    f##n = (Callable_##n)f;			\
+    return (*f##n) l;				\
+  }
+
+typedef Cell (*Callable_0) (void);
+typedef Cell (*Callable_1) (Cell);
+typedef Cell (*Callable_2) (Cell, Cell);
+typedef Cell (*Callable_3) (Cell, Cell, Cell);
+typedef Cell (*Callable_4) (Cell, Cell, Cell, Cell);
 
 #define NEED_PARAMETERS(n) if (s - n < -1) THROW (-4)
 #define MORE_PARAMETERS(n) if (s + n >= rs) THROW (-3)
@@ -48,6 +62,99 @@
 #define TRIPLE_OPERATION(op)					\
   TRIPLE (op (&LOWER_PARAMETER (1), &LOWER_PARAMETER (0), &_t))
 
+jmp_buf jmpbuf;
+Cell *data_pointer, *vocabulary;
+Byte dictionary[DICTIONARY_SIZE];
+Cell macro_stack[MACRO_STACK_SIZE];
+Character *terminal_input_buffer;
+Cell *input_buffer, *number_input_buffer, *in;
+Cell *instruction_slot, *instruction_word, *state;
+Cell *exception_handler;
+
+DEFINEINVOKER (0, ())
+DEFINEINVOKER (1, (macro_stack[0]))
+DEFINEINVOKER (2, (macro_stack[1], macro_stack[0]))
+DEFINEINVOKER (3, (macro_stack[2], macro_stack[1],
+		   macro_stack[0]))
+DEFINEINVOKER (4, (macro_stack[3], macro_stack[2],
+		   macro_stack[1], macro_stack[0]))
+
+static Cell
+entry_has_name (Entry *e, Character *name, Cell size)
+{
+  Cell i;
+
+  if (e->name[0] != size)
+    return 0;
+  for (i = 0; i < size; i++)
+    if (toupper (e->name[i + 1]) != toupper (name[i]))
+      return 0;
+  return 1;
+}
+
+static Cell
+_min (Cell a, Cell b)
+{
+  return (a > b) ? b : a;
+}
+
+static Character *
+make_name (char *c_string)
+{
+  static Character name[ENTRY_NAME_SIZE];
+  Cell i, length;
+
+  length = _min (strlen (c_string), ENTRY_NAME_SIZE);
+  for (i = 0; i < length; i++)
+    name[i] = c_string[i];
+  return name;
+}
+
+static Cell
+_find_word (Cell _vocabulary, Character *name, Cell size)
+{
+  Entry *e;
+
+  while (_vocabulary != DICTIONARY_SIZE)
+    {
+      e = (Entry *) A (_vocabulary);
+      if (entry_has_name (e, name, size))
+        break;
+      _vocabulary = e->link;
+    }
+  return (_vocabulary == DICTIONARY_SIZE) ? 0 : _vocabulary;
+}
+
+static Cell
+_macro (char *name, Callable invokee,
+	int arguments_number, int drop_result)
+{
+  static Callable_Invoker invokers[] =
+    {
+      invoke_0, invoke_1, invoke_2, invoke_3, invoke_4
+    };
+  Macro *m;
+  Cell link, offset;
+  
+  if (arguments_number > 4)
+      fatal_error ("BAD MACRO");
+  link = *vocabulary;
+  offset = vocabulary_allocate (sizeof (Macro));
+  m = (Macro *) A (offset);
+  m->invokee = invokee;
+  m->arguments_number = arguments_number;
+  m->invoker = invokers[arguments_number];
+  fill_instruction_word (OP_NOP);
+  define (make_name (name), strlen (name), link);
+  emit_instruction_slot (OP_LIT);
+  emit_instruction_word (offset);
+  emit_instruction_slot (OP_MACRO);
+  if (drop_result)
+    emit_instruction_slot (OP_DROP);
+  emit_instruction_slot (OP_RET);
+  return ((Entry *) A (*vocabulary))->code_pointer;
+}
+
 static void
 rot (Cell *x1, Cell *x2, Cell *x3)
 {
@@ -66,36 +173,154 @@ minus_rot (Cell *x1, Cell *x2, Cell *x3)
   *x1 = n3, *x2 = n1, *x3 = n2;
 }
 
-static void
-patch_macro (Cell *oprand)
+void
+fatal_error (char *message)
 {
-  Macro *object;
+  fprintf (stderr, "FATAL ERROR: %s\n", message);
+  exit (1);
+}
 
-  object = find_macro ((Character *) A (*oprand));
-  if (object != NULL)
+void
+put_string (FILE *output, Character *string, Cell size)
+{
+  Cell i;
+
+  for (i = 0; i < size; i++)
+    fputc (string[i], output);
+}
+
+void
+reset_system (void)
+{
+  data_pointer = (Cell *) dictionary;
+  vocabulary = data_pointer + 1;
+  *data_pointer = ((Byte *) (vocabulary + 1) - dictionary);
+  *vocabulary = DICTIONARY_SIZE;
+  input_buffer = (Cell *) A (allocate (sizeof (Cell)));
+  *input_buffer = allocate (sizeof (Character) * BUFFER_SIZE);
+  terminal_input_buffer = (Character *) A (*input_buffer);
+  number_input_buffer = (Cell *) A (allocate (sizeof (Cell)));
+  in = (Cell *) A (allocate (sizeof (Cell)));
+  instruction_slot = (Cell *) A (allocate (sizeof (Cell)));
+  instruction_word = (Cell *) A (allocate (sizeof (Cell)));
+  state = (Cell *) A (allocate (sizeof (Cell)));
+  exception_handler = (Cell *) A (allocate (sizeof (Cell)));
+  *instruction_slot = *instruction_word = 0;
+  *state = 1;
+  *exception_handler = -1;
+}
+
+Cell
+allocate (Cell size)
+{
+  Cell _data_pointer;
+
+  _data_pointer = *data_pointer;
+  if ((Unsigned_Cell) (_data_pointer + size)
+      > *vocabulary)
+    THROW (-8);
+  else
+    *data_pointer = _data_pointer + size;
+  return _data_pointer;
+}
+
+Cell
+vocabulary_allocate (Cell size)
+{
+  int _vocabulary;
+
+  _vocabulary = *vocabulary - size;
+  if (_vocabulary < *data_pointer)
+    THROW (-8);
+  return *vocabulary = _vocabulary;
+}
+
+void
+emit_instruction_slot (Cell slot)
+{
+  Cell offset, *word_pointer;
+
+  if (*instruction_slot == *instruction_word)
     {
-      Cell slot;
+      *instruction_word = allocate (sizeof (Cell));
+      *instruction_slot = *instruction_word;
+      *instruction_word += sizeof (Cell);
+    }
+  offset = *instruction_word - (*instruction_slot)++;
+  offset = sizeof (Cell) - offset;
+  word_pointer = (Cell *) (dictionary + *instruction_word
+			   - sizeof (Cell));
+  *word_pointer |= MASK_SLOT (slot, offset);
+}
 
-      slot = static_allocate (sizeof (Macro *));
-      if (slot == 0)
-	{
-	  THROW (-1);
-	}
-      else
-	{
-	  *(Macro **) A (slot) = object;
-	  *oprand = slot;
-	}
+void
+emit_instruction_word (Cell word)
+{
+  Cell offset;
+
+  offset = allocate (sizeof (Cell));
+  V (offset) = word;
+}
+
+Cell
+emit_instruction_slot_and_word (Cell slot, Cell word)
+{
+  Cell patch;
+
+  emit_instruction_slot (slot);
+  patch = *data_pointer;
+  emit_instruction_word (word);
+  return patch;
+}
+
+void
+fill_instruction_word (Cell slot)
+{
+  while (*instruction_slot != *instruction_word)
+    emit_instruction_slot (slot);
+}
+
+void
+define (Character *name, Cell size, Cell link)
+{
+  Cell offset;
+  Entry *e;
+
+  if (size != 0)
+    {
+      offset = vocabulary_allocate (sizeof (Entry));
+      e = (Entry *) A (offset);
+      e->flag = 0;
+      e->link = link;
+      size = _min (size, ENTRY_NAME_SIZE - 1);
+      e->name[0] = size;
+      size *= sizeof (Character);
+      e->code_pointer = *data_pointer;
+      e->parameter = 0;
+      memcpy ((char *) (e->name + 1), (char *) name, size);
     }
   else
     {
-      Character *characters;
-
-      characters = (Character *) oprand;
-      put_string(stderr, characters + 1, *characters);
-      puts ("?");
-      fatal_error ("MACRO NOT FOUND");
+      THROW (-16);
     }
+}
+
+Cell
+find_word (Character *name, Cell size)
+{
+  return _find_word (*vocabulary, name, size);
+}
+
+Cell
+function (char *name, Callable invokee, int arguments_number)
+{
+  return _macro (name, invokee, arguments_number, 0);
+}
+
+Cell
+routine (char *name, Callable invokee, int arguments_number)
+{
+  return _macro (name, invokee, arguments_number, 1);
 }
 
 void
@@ -108,24 +333,8 @@ execute (Cell pc)
   t = s = rt = rs = a = i = slot = temp = -1;
   if ((temp = CATCH) != 0)
     {
-      Frame *top;
-      Character abortx[] = { 'A', 'B', 'O', 'R', 'T', 'X' };
-
-      top = pop_frame ();
-      if (top == NULL)
-	{
-	  t = temp, s = 0;
-	  rs = STACK_SIZE;
-	  pc = find_word (abortx, 6);
-	  pc = ((Entry *) A (pc))->code_pointer;
-	}
-      else
-	{
-	  t = top->t, s = top->s;
-	  rt = top->rt, rs = top->rs;
-	  pc = top->pc;
-	  unmake_frame (top);
-	}
+      PUSH_PARAMETER (temp);
+      pc = ((Entry *) A (*exception_handler))->code_pointer;
     }
  next:
   while (pc != -1)
@@ -136,7 +345,6 @@ execute (Cell pc)
 	switch ((((Unsigned_Cell) i) >> (slot * 8)) & 0xff)
 	  {
 	  case OP_HALT:
-	    clear_frames ();
 	    return;
 	  case OP_NOP:
 	    continue;
@@ -320,9 +528,7 @@ execute (Cell pc)
 	    pc = V (pc);
 	    goto next;
 	  case OP_JZ:
-	    temp = t;
-	    t = POP_PARAMETER;
-	    if (temp)
+	    if (t)
 	      {
 		pc += sizeof (Cell);
 		continue;
@@ -413,6 +619,29 @@ execute (Cell pc)
 	    t = POP_PARAMETER;
 	    rt++;
 	    break;
+	  case OP_SAVE:
+	    {
+	      Cell *frame;
+
+	      NEED_PARAMETERS (1);
+	      frame = (Cell *) A (t);
+	      t = POP_PARAMETER;
+	      *frame++ = t; *frame++ = s;
+	      *frame++ = rt; *frame++ = rs;
+	      *frame = pc;
+	    }
+	    break;
+	  case OP_RESTORE:
+	    {
+	      Cell *frame;
+
+	      NEED_PARAMETERS (1);
+	      frame = (Cell *) A (t);
+	      t = *frame++; s = *frame++;
+	      rt = *frame++; rs = *frame++;
+	      pc = *frame;
+	    }
+	    break;
 	  case OP_PICK:
 	    NEED_PARAMETERS (1 + t);
 	    t = LOWER_PARAMETER (t);
@@ -433,46 +662,23 @@ execute (Cell pc)
 	  case OP_NEGATE:
 	    UNARY (t = -t);
 	    break;
-	  case OP_THROW:
-	    NEED_PARAMETERS (1);
-	    temp = t;
-	    t = POP_PARAMETER;
-	    if (temp)
-	      THROW (temp);
-	    break;
-	  case OP_CATCH:
-	    {
-	      Frame *top;
-
-	      top = make_frame (t, s, rt, rs, a, pc);
-	      push_frame (top);
-	    }
-	    pc = t;
-	    goto next;
 	  case OP_MACRO:
-	    patch_macro ((Cell *) A (pc));
-	    temp = pc - sizeof (Cell);
-	    V (temp) &= EMPTY_SLOT (slot);
-	    V (temp) |= MASK_SLOT (_OP_MACRO, slot);
-	  case _OP_MACRO:
 	    {
-	      Cell arguments_number;
-	      Macro *object;
+	      Macro *m;
+	      Cell i, arguments_number;
 
-	      temp = V (pc);
-	      object = *(Macro **) A (temp);
-	      arguments_number = object->arguments_number;
-	      NEED_PARAMETERS (arguments_number);
-	      sys.task.s = 0;
-	      while (arguments_number--)
+	      NEED_PARAMETERS (1);
+	      m = (Macro *) A (t);
+	      arguments_number = m->arguments_number;
+	      NEED_PARAMETERS (1 + arguments_number);
+	      for (i = 0; i < arguments_number; i++)
 		{
-		  sys.task.stack[sys.task.s++] = t;
 		  t = POP_PARAMETER;
+		  macro_stack[i] = t;
 		}
-	      pc += sizeof(Cell);
-	      temp = (*object->invoker) (object->invokee);
+	      t = (*m->invoker) (m->invokee);
 	    }
-	    goto _dup;
+	    break;
 	  case OP_CLEAR_PARAMETER_STACK:
 	    t = ~0;
 	    s = -1;

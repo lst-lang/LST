@@ -19,13 +19,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <setjmp.h>
-#include "system.h"
 #include "execute.h"
-#include "bootstrp.h"
+#include "boot.h"
 
 int
 main (void)
 {
-  bootstrap ();
+  boot ();
   return 0;
 }

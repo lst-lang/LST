@@ -15,23 +15,4 @@
 *   along with LST.  If not, see https://www.gnu.org/licenses.                *
 ******************************************************************************/
 
-Cell dump (Cell, Cell);
-Cell macro_emit_instruction_slot (Cell);
-Cell macro_emit_instruction_word (Cell);
-Cell macro_fill_instruction_word (Cell);
-Cell macro_fill_nop (void);
-Cell macro_tail_recurse (void);
-Cell macro_recurse (void);
-Cell macro_define (Cell, Cell);
-Cell macro_end_define (Cell);
-Cell macro_find_word (Cell, Cell);
-Cell macro_accept (Cell, Cell);
-Cell macro_skip_delimiters (Cell);
-Cell macro_find_delimiter (Cell);
-Cell macro_word (Cell);
-Cell macro_number (void);
-Cell macro_immediate (void);
-Cell macro_literal (Cell);
-Cell macro_emit (Cell);
-Cell macro_key (void);
-void register_core_macros (void);
+void boot (void);
