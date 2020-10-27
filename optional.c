@@ -257,36 +257,6 @@ ud_to_f (Cell l, Cell h, Cell r)
 }
 
 static Cell
-dump (Cell addr, Cell u)
-{
-  unsigned int i, j;
-  int *word, *end;
-
-  printf ("\n%-10s%-16s%-12s%-24s%-12s\n",
-          "ADDRESS", "BYTECODES", "INTEGER", "ADDRESS", "CHARACTERS");
-  word = (int *) A (addr);
-  end = (int *) ((char *) word + u);
-  while (word < end)
-    {
-      printf ("%08ld  ", (unsigned long)
-	      ((char *) word - (char *) &dictionary));
-      for (i = 0; i < sizeof (int); i++)
-        printf ("%02x ", ((unsigned char *) word)[i]);
-      printf ("    %-12d", *(int *) word);
-      printf ("%-24p", *(void **) word);
-      for (i = 0; i < sizeof (int); i++)
-        {
-          j = ((unsigned char *) word)[i];
-          j = isprint (j) ? j : '?';
-          printf ("%c", j);
-        }
-      putchar (10);
-      word++;
-    }
-  return u;
-}
-
-static Cell
 int_dot (Cell n)
 {
   return printf ("%d(%u) ", (int) n, (unsigned) n);
@@ -337,7 +307,6 @@ optional (void)
   function ("!F0<", (Callable) f_zero_less_than, 1);
   function ("!F0=", (Callable) f_zero_equals, 1);
   function ("UD>!F", (Callable) ud_to_f, 3);
-  routine ("DUMP", (Callable) dump, 2);
   routine ("INT.", (Callable) int_dot, 1);
   routine ("LONG.", (Callable) long_dot, 2);
   routine ("FLOAT.", (Callable) float_dot, 1);
