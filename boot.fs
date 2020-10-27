@@ -32,7 +32,7 @@ declare lmb declare /cell declare /char
 >> a! >> @a >> !a >> @+ >> !+ >> @r >> !r >> c@a >> c!a >> c@+
 >> c!+ >> c@r >> c!r >> save >> restore >> pick >> rpick
 >> depth >> mod >> umod >> negate | macro >> clear-parameters
->> clear-returns >> .s drop
+>> clear-returns drop
 
 
 \ forth               core word set                        forth

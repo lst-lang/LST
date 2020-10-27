@@ -687,16 +687,6 @@ execute (Cell pc)
 	    rt = ~0;
 	    rs = STACK_SIZE;
 	    break;
-	  case OP_DOT_S:
-	    {
-	      int item;
-
-	      for (item = 1; item <= s; item++)
-		printf ("%d ", (int) stack[item]);
-	      if (s != -1)
-		printf ("%d ", (int) t);
-	    }
-	    break;
 	  default:
 	    fatal_error ("BAD OPCODE");
 	    return;
