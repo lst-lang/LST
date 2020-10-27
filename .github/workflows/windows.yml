@@ -17,4 +17,4 @@ jobs:
       shell: cmd
       run: |
         call "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-        cl /Feforth system.c execute.c macro.c core.c optional.c bootstrp.c main.c
+        cl /Feforth execute.c optional.c boot.c main.c

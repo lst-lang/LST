@@ -14,5 +14,5 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: make
-      run: clang -o forth system.c execute.c macro.c core.c optional.c bootstrp.c main.c -ansi -Wall -pedantic
+      run: clang -o forth execute.c optional.c boot.c main.c -ansi -Wall -pedantic
 
