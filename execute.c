@@ -39,22 +39,22 @@ typedef Cell (*Callable_4) (Cell, Cell, Cell, Cell);
 #define NEED_PARAMETERS(n) if (s - n < -1) THROW (-4)
 #define MORE_PARAMETERS(n) if (s + n >= rs) THROW (-3)
 #define PUSH_PARAMETER(v) MORE_PARAMETERS (1); stack[++s] = t; t = (v)
-#define LOWER_PARAMETER(n) stack[s - n]
+#define LOWER_PARAMETER(n) stack[s - (n)]
 #define DROP_PARAMETER s--
 #define POP_PARAMETER stack[DROP_PARAMETER]
-#define NEED_RETURNS(n) if (rs + n > STACK_SIZE) THROW (-6)
-#define MORE_RETURNS(n) if (rs - 1 <= s) THROW (-5)
+#define NEED_RETURNS(n) if (rs + (n) > STACK_SIZE) THROW (-6)
+#define MORE_RETURNS(n) if (rs - (n) <= s) THROW (-5)
 #define PUSH_RETURN(r) MORE_RETURNS (1); stack[--rs] = rt; rt = (r)
-#define LOWER_RETURN(n) stack[rs + n]
+#define LOWER_RETURN(n) stack[rs + (n)]
 #define DROP_RETURN rs++
 #define POP_RETURN stack[DROP_RETURN]
 #define BINARY(e) NEED_PARAMETERS (2); e; DROP_PARAMETER
+#define DIVISOR_CANNOT_BE_ZERO if (s > -1 && t == 0) THROW (-10)
 #define BINARY_OPERATION(op) BINARY (t = LOWER_PARAMETER (0) op t)
 #define BINARY_OPERATION_CAST(op,c)		\
-  BINARY (t=(c) LOWER_PARAMETER (0) op (c) t)
+  BINARY (t = (c) LOWER_PARAMETER (0) op (c) t)
 #define COMPARE_OPERATION(op) BINARY_OPERATION (op); t = -t
-#define COMPARE_OPERATION_CAST(op,c)		\
-  BINARY_OPERATION_CAST (op, c); t = -t
+#define COMPARE_OPERATION_CAST(op,c) BINARY_OPERATION_CAST (op, c); t = -t
 #define UNARY(e) NEED_PARAMETERS (1); e
 #define UNARY_OPERATION(op) UNARY (t = op t)
 #define SWAP(a,b) temp = (a); (a) = (b); (b) = temp
@@ -74,8 +74,7 @@ Cell *exception_handler;
 DEFINEINVOKER (0, ())
 DEFINEINVOKER (1, (macro_stack[0]))
 DEFINEINVOKER (2, (macro_stack[1], macro_stack[0]))
-DEFINEINVOKER (3, (macro_stack[2], macro_stack[1],
-		   macro_stack[0]))
+DEFINEINVOKER (3, (macro_stack[2], macro_stack[1], macro_stack[0]))
 DEFINEINVOKER (4, (macro_stack[3], macro_stack[2],
 		   macro_stack[1], macro_stack[0]))
 
@@ -126,8 +125,7 @@ _find_word (Cell _vocabulary, Character *name, Cell size)
 }
 
 static Cell
-_macro (char *name, Callable invokee,
-	int arguments_number, int drop_result)
+_macro (char *name, Callable invokee, int arguments_number, int drop_result)
 {
   static Callable_Invoker invokers[] =
     {
@@ -160,8 +158,8 @@ rot (Cell *x1, Cell *x2, Cell *x3)
 {
   Cell n1, n2, n3;
 
-  n1 = *x1, n2 = *x2, n3 = *x3;
-  *x1 = n2, *x2 = n3, *x3 = n1;
+  n1 = *x1; n2 = *x2; n3 = *x3;
+  *x1 = n2; *x2 = n3; *x3 = n1;
 }
 
 static void
@@ -173,169 +171,15 @@ minus_rot (Cell *x1, Cell *x2, Cell *x3)
   *x1 = n3, *x2 = n1, *x3 = n2;
 }
 
-void
-fatal_error (char *message)
+static void
+_execute (Cell pc, Cell t)
 {
-  fprintf (stderr, "FATAL ERROR: %s\n", message);
-  exit (1);
-}
-
-void
-put_string (FILE *output, Character *string, Cell size)
-{
-  Cell i;
-
-  for (i = 0; i < size; i++)
-    fputc (string[i], output);
-}
-
-void
-reset_system (void)
-{
-  data_pointer = (Cell *) dictionary;
-  vocabulary = data_pointer + 1;
-  *data_pointer = ((Byte *) (vocabulary + 1) - dictionary);
-  *vocabulary = DICTIONARY_SIZE;
-  input_buffer = (Cell *) A (allocate (sizeof (Cell)));
-  *input_buffer = allocate (sizeof (Character) * BUFFER_SIZE);
-  terminal_input_buffer = (Character *) A (*input_buffer);
-  number_input_buffer = (Cell *) A (allocate (sizeof (Cell)));
-  in = (Cell *) A (allocate (sizeof (Cell)));
-  instruction_slot = (Cell *) A (allocate (sizeof (Cell)));
-  instruction_word = (Cell *) A (allocate (sizeof (Cell)));
-  state = (Cell *) A (allocate (sizeof (Cell)));
-  exception_handler = (Cell *) A (allocate (sizeof (Cell)));
-  *instruction_slot = *instruction_word = 0;
-  *state = 1;
-  *exception_handler = -1;
-}
-
-Cell
-allocate (Cell size)
-{
-  Cell _data_pointer;
-
-  _data_pointer = *data_pointer;
-  if ((Unsigned_Cell) (_data_pointer + size)
-      > *vocabulary)
-    THROW (-8);
-  else
-    *data_pointer = _data_pointer + size;
-  return _data_pointer;
-}
-
-Cell
-vocabulary_allocate (Cell size)
-{
-  int _vocabulary;
-
-  _vocabulary = *vocabulary - size;
-  if (_vocabulary < *data_pointer)
-    THROW (-8);
-  return *vocabulary = _vocabulary;
-}
-
-void
-emit_instruction_slot (Cell slot)
-{
-  Cell offset, *word_pointer;
-
-  if (*instruction_slot == *instruction_word)
-    {
-      *instruction_word = allocate (sizeof (Cell));
-      *instruction_slot = *instruction_word;
-      *instruction_word += sizeof (Cell);
-    }
-  offset = *instruction_word - (*instruction_slot)++;
-  offset = sizeof (Cell) - offset;
-  word_pointer = (Cell *) (dictionary + *instruction_word
-			   - sizeof (Cell));
-  *word_pointer |= MASK_SLOT (slot, offset);
-}
-
-void
-emit_instruction_word (Cell word)
-{
-  Cell offset;
-
-  offset = allocate (sizeof (Cell));
-  V (offset) = word;
-}
-
-Cell
-emit_instruction_slot_and_word (Cell slot, Cell word)
-{
-  Cell patch;
-
-  emit_instruction_slot (slot);
-  patch = *data_pointer;
-  emit_instruction_word (word);
-  return patch;
-}
-
-void
-fill_instruction_word (Cell slot)
-{
-  while (*instruction_slot != *instruction_word)
-    emit_instruction_slot (slot);
-}
-
-void
-define (Character *name, Cell size, Cell link)
-{
-  Cell offset;
-  Entry *e;
-
-  if (size != 0)
-    {
-      offset = vocabulary_allocate (sizeof (Entry));
-      e = (Entry *) A (offset);
-      e->flag = 0;
-      e->link = link;
-      size = _min (size, ENTRY_NAME_SIZE - 1);
-      e->name[0] = size;
-      size *= sizeof (Character);
-      e->code_pointer = *data_pointer;
-      e->parameter = 0;
-      memcpy ((char *) (e->name + 1), (char *) name, size);
-    }
-  else
-    {
-      THROW (-16);
-    }
-}
-
-Cell
-find_word (Character *name, Cell size)
-{
-  return _find_word (*vocabulary, name, size);
-}
-
-Cell
-function (char *name, Callable invokee, int arguments_number)
-{
-  return _macro (name, invokee, arguments_number, 0);
-}
-
-Cell
-routine (char *name, Callable invokee, int arguments_number)
-{
-  return _macro (name, invokee, arguments_number, 1);
-}
-
-void
-execute (Cell pc)
-{
-  Cell t, s, rt, rs, a, i;
+  Cell s, rt, rs, a, i;
   Cell stack[STACK_SIZE];
   Cell slot, temp;
 
-  t = s = rt = rs = a = i = slot = temp = -1;
-  if ((temp = CATCH) != 0)
-    {
-      PUSH_PARAMETER (temp);
-      pc = ((Entry *) A (*exception_handler))->code_pointer;
-    }
+  s = rt = a = i = slot = temp = 0;
+  rs = (t != 0) ? STACK_SIZE : 0;
  next:
   while (pc != -1)
     {
@@ -403,6 +247,7 @@ execute (Cell pc)
 	    BINARY_OPERATION (*);
 	    break;
 	  case OP_SLASH:
+	    DIVISOR_CANNOT_BE_ZERO;
 	    BINARY_OPERATION (/);
 	    break;
 	  case OP_U_PLUS:
@@ -415,6 +260,7 @@ execute (Cell pc)
 	    BINARY_OPERATION_CAST (*, Unsigned_Cell);
 	    break;
 	  case OP_U_SLASH:
+	    DIVISOR_CANNOT_BE_ZERO;
 	    BINARY_OPERATION_CAST (/, Unsigned_Cell);
 	    break;
 	  case OP_ONE_PLUS:
@@ -528,28 +374,22 @@ execute (Cell pc)
 	    pc = V (pc);
 	    goto next;
 	  case OP_JZ:
-	    if (t)
+	    if (t != 0)
 	      {
 		pc += sizeof (Cell);
 		continue;
 	      }
-	    else
-	      {
-		pc = V (pc);
-		goto next;
-	      }
+	    pc = V (pc);
+	    goto next;
 	  case OP_DRJNE:
 	    if (--rt != 0)
 	      {
 		pc = V (pc);
 		goto next;
 	      }
-	    else
-	      {
-		rt = POP_RETURN;
-		pc += sizeof (Cell);
-		continue;
-	      }
+	    rt = POP_RETURN;
+	    pc += sizeof (Cell);
+	    continue;
 	  case OP_CALL:
 	    PUSH_RETURN (pc + sizeof (Cell));
 	    pc = V (pc);
@@ -654,9 +494,11 @@ execute (Cell pc)
 	    PUSH_PARAMETER (s);
 	    break;
 	  case OP_MOD:
+	    DIVISOR_CANNOT_BE_ZERO;
 	    BINARY_OPERATION (%);
 	    break;
 	  case OP_U_MOD:
+	    DIVISOR_CANNOT_BE_ZERO;
 	    BINARY_OPERATION_CAST (%, Unsigned_Cell);
 	    break;
 	  case OP_NEGATE:
@@ -679,11 +521,11 @@ execute (Cell pc)
 	      t = (*m->invoker) (m->invokee);
 	    }
 	    break;
-	  case OP_CLEAR_PARAMETER_STACK:
+	  case OP_CLEAR_PARAMETERS:
 	    t = ~0;
 	    s = -1;
 	    break;
-	  case OP_CLEAR_RETURN_STACK:
+	  case OP_CLEAR_RETURNS:
 	    rt = ~0;
 	    rs = STACK_SIZE;
 	    break;
@@ -692,4 +534,155 @@ execute (Cell pc)
 	    return;
 	  }
     }
+}
+
+void
+fatal_error (char *message)
+{
+  fprintf (stderr, "FATAL ERROR: %s\n", message);
+  exit (1);
+}
+
+void
+reset_system (void)
+{
+  data_pointer = (Cell *) dictionary;
+  vocabulary = data_pointer + 1;
+  exception_handler = vocabulary + 1;
+  input_buffer = exception_handler + 1;
+  number_input_buffer = input_buffer + 1;
+  in = number_input_buffer + 1;
+  instruction_slot = in + 1;
+  instruction_word = instruction_slot + 1;
+  state = instruction_word + 1;
+  *data_pointer = ((Byte *) (state + 1) - dictionary);
+  *(Unsigned_Cell *) vocabulary = DICTIONARY_SIZE;
+  *input_buffer = allocate (sizeof (Character) * BUFFER_SIZE);
+  terminal_input_buffer = (Character *) A (*input_buffer);
+  *instruction_slot = *instruction_word = 0;
+  *state = 1;
+  *exception_handler = -1;
+}
+
+Cell
+allocate (Cell size)
+{
+  Cell _data_pointer;
+
+  _data_pointer = *data_pointer;
+  if ((Unsigned_Cell) (_data_pointer + size)
+      > *vocabulary)
+    THROW (-8);
+  else
+    *data_pointer = _data_pointer + size;
+  return _data_pointer;
+}
+
+Cell
+vocabulary_allocate (Cell size)
+{
+  int _vocabulary;
+
+  _vocabulary = *vocabulary - size;
+  if (_vocabulary < *data_pointer)
+    THROW (-8);
+  return *vocabulary = _vocabulary;
+}
+
+void
+emit_instruction_slot (Cell slot)
+{
+  Cell offset, *word_pointer;
+
+  if (*instruction_slot == *instruction_word)
+    {
+      *instruction_word = allocate (sizeof (Cell));
+      V (*instruction_word) = 0;
+      *instruction_slot = *instruction_word;
+      *instruction_word += sizeof (Cell);
+    }
+  offset = *instruction_word - (*instruction_slot)++;
+  offset = sizeof (Cell) - offset;
+  word_pointer = (Cell *) (dictionary + *instruction_word - sizeof (Cell));
+  *word_pointer |= MASK_SLOT (slot, offset);
+}
+
+void
+emit_instruction_word (Cell word)
+{
+  Cell offset;
+
+  offset = allocate (sizeof (Cell));
+  V (offset) = word;
+}
+
+Cell
+emit_instruction_slot_and_word (Cell slot, Cell word)
+{
+  Cell patch;
+
+  emit_instruction_slot (slot);
+  patch = *data_pointer;
+  emit_instruction_word (word);
+  return patch;
+}
+
+void
+fill_instruction_word (Cell slot)
+{
+  while (*instruction_slot != *instruction_word)
+    emit_instruction_slot (slot);
+}
+
+void
+define (Character *name, Cell size, Cell link)
+{
+  Cell offset;
+  Entry *e;
+
+  if (size != 0)
+    {
+      offset = vocabulary_allocate (sizeof (Entry));
+      e = (Entry *) A (offset);
+      e->flag = 0;
+      e->link = link;
+      size = _min (size, ENTRY_NAME_SIZE - 1);
+      e->name[0] = size;
+      size *= sizeof (Character);
+      e->code_pointer = *data_pointer;
+      e->parameter = 0;
+      memcpy ((char *) (e->name + 1), (char *) name, size);
+    }
+  else
+    {
+      THROW (-16);
+    }
+}
+
+Cell
+find_word (Character *name, Cell size)
+{
+  return _find_word (*vocabulary, name, size);
+}
+
+Cell
+function (char *name, Callable invokee, int arguments_number)
+{
+  return _macro (name, invokee, arguments_number, 0);
+}
+
+Cell
+routine (char *name, Callable invokee, int arguments_number)
+{
+  return _macro (name, invokee, arguments_number, 1);
+}
+
+void
+execute (Cell pc)
+{
+  Cell exception;
+
+  if ((exception = CATCH) != 0)
+    pc = ((Entry *) A (*exception_handler))->code_pointer;
+  _execute (pc, exception);
 }

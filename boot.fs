@@ -1,27 +1,24 @@
 \ This file is part of LST.
 
-\ LST is free software; you can redistribute it and/or
-\ modify it under the terms of the GNU General Public License
-\ as published by the Free Software Foundation,
-\ either version 3 of the License, or (at your option)
-\ any later version.
+\ LST is free software; you can redistribute it and/or modify
+\ it under the terms of the GNU General Public License as
+\ published by the Free Software Foundation, either version 3
+\ of the License, or (at your option) any later version.
 
-\ This program is distributed in the hope that it will
-\ be useful, but WITHOUT ANY WARRANTY; without even the
-\ implied warranty of MERCHANTABILITY or FITNESS FOR
-\ A PARTICULAR PURPOSE.  See the GNU General Public License
-\ for more details.
+\ This program is distributed in the hope that it will be
+\ useful, but WITHOUT ANY WARRANTY; without even the implied
+\ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+\ PURPOSE. See the GNU General Public License for more details.
 
-\ You should have received a copy of the
-\ GNU General Public License along with this program.
+\ You should have received a copy of the GNU General Public
+\ License along with this program.
 \ If not, see http://www.gnu.org/licenses/.
 
-
-\ forth               primitives                           forth
+\ boot                primitives                           forth
 declare terminal declare /buffer declare 'input
 declare '#input declare >in declare state declare 'here
 declare 'resume declare flag declare code declare parameter
-declare lmb declare /cell declare /char
+declare msb declare /cell declare /char
 0 >> bye >> nop >> dup >> swap >> drop >> over >> rot >> -rot
 >> nip >> tuck >> rot-drop >> rot-drop-swap >> + >> - >> * >> /
 >> u+ >> u- >> u* >> u/ >> 1+ >> 1- >> invert >> and >> or
@@ -34,8 +31,7 @@ declare lmb declare /cell declare /char
 >> depth >> mod >> umod >> negate | macro >> clear-parameters
 >> clear-returns drop
 
-
-\ forth               core word set                        forth
+\ boot                core word set                        forth
 : align-number dup 1- invert >r + 1- r> and ;
 : cells /cell * ;
 : aligned 1 cells align-number ;
@@ -52,9 +48,9 @@ declare lmb declare /cell declare /char
 : #input '#input @ ;
 : ?eoi in #input = ;
 : ?eos ?eoi if ; then drop over @in = ;
-: string swap drop >r r@ input + in r> - ?eoi if drop ; then
-   drop +in ;
-: length ?eos if drop string ; then drop +in length ;
+: ?+in ?eoi if drop ; then drop +in ;
+: length ?eos if drop swap drop >r r@ input + in r> - ?+in ;
+   then drop +in length ;
 : 2drop drop drop ;
 : parse ?eoi if 2drop 0 0 ; then drop +in in length ;
 : 2dup over over ;
@@ -69,7 +65,7 @@ declare lmb declare /cell declare /char
 variable base [ 10 base ! ]
 : /mod 2dup mod >r / r> ;
 : u/mod 2dup umod >r u/ r> ;
-: ud/ swap over u/mod swap >r 2* over 0 lmb or swap u/mod >r
+: ud/ swap over u/mod swap >r 2* over 0 msb or swap u/mod >r
    over >r * r> r> * swap >r >r swap over u/mod r> + swap >r
    swap u/mod swap r> + r> + swap r> swap ;
 : d>c dup 9 > if drop 10 - 'A' + ; then drop '0' + ;
@@ -91,7 +87,7 @@ variable #pictured [ /pictured chars allot ]
 : d+ >r swap r> + >r 2dup + swap over swap u< >r swap over swap
    u< r> or r> swap if drop 1+ ; then drop ;
 : um+ dup 1 and if drop >r 2dup >r >r d+ r> r> r> ; then drop ;
-: d2* 2* over lmb and if drop 1 or swap 2* swap ; then drop
+: d2* 2* over msb and if drop 1 or swap 2* swap ; then drop
    swap 2* swap ;
 : um-shift dup 1 u>= if drop um+ u2/ >r d2* r> um-shift ; then
    2drop 2drop ;
@@ -111,7 +107,7 @@ variable #pictured [ /pictured chars allot ]
    negate ;
 : */ >r m* r> sm/rem swap drop ;
 : */mod >r m* r> sm/rem ;
-: +! >r r@ @ + r> ! ;
+: +! a! @a + !a ;
 variable leaves
 : leave postpone r>drop postpone r>drop jmp -1 ,slot-word
    leaves @ over ! leaves ! ; immediate
@@ -136,9 +132,9 @@ variable leaves
 : 0> 0 > ;
 : cmove dup 0> if drop >r swap a! r> for c@+ swap >r c!r r>
    next drop ; then 2drop 2drop ;
-: s" jmp -1 ,slot-word '"' parse dup >r here dup >r over chars
-   allot align swap cmove here swap ! r> postpone literal r>
-   postpone literal ; immediate
+: s" jmp -1 ,slot-word ,fill-nop '"' parse dup >r here dup >r
+   over chars allot swap cmove align here swap ! r>
+   postpone literal r> postpone literal ; immediate
 : ." postpone s" postpone type ; immediate
 : 2! swap over ! cell+ ! ;
 : 2@ dup cell+ @ swap @ ;
@@ -159,8 +155,7 @@ variable leaves
 : ?terminator dup 0= swap 10 = or ;
 : accept swap a! 0 swap for key dup ?terminator if 2drop r>drop
    ; then drop c!+ 1+ next ;
-: parse-name bl skip-delimiters dup >r input + bl
-   skip-non-delimiters r> - ;
+: parse-name bl skip dup >r input + bl stop r> - ;
 : next-char 1- swap char+ swap ;
 : signnum dup 0= if drop -13 throw ; then drop over c@ '-' = if
    drop next-char -1 ; then drop 1 ;
@@ -181,8 +176,8 @@ variable 'name [ 1 cells allot ]
 : ?word 'name a! over !+ dup !+ 2dup find-word dup 0= if 2drop
    ?number ; then drop >r 2drop r> dup flag + @ state @ or if
    drop execute ; then drop code + @ ,call ;
-: interpret ?eoi if drop ; then drop parse-name ?word interpret
-   ;
+: interpret ?eoi if drop ; then drop parse-name
+   dup 0= if drop 2drop interpret ; then drop ?word interpret ;
 : cr 10 emit ;
 : read-eval cr read-input interpret ." OK" read-eval ;
 : quit clear-returns terminal 'input ! read-eval ;
@@ -193,89 +188,91 @@ variable exception-stack [ /frame cells /exception-stack *
 : +frame exception-stack a! @a dup /frame + !a ;
 : -frame exception-stack a! @a /frame - !a ;
 : message dup -1 = if 2drop ." ABORT" ; then drop dup -2 = if
-   2drop ." ABORT" '"' emit ; then drop dup -3 = if 2drop ." S"
-   ." TACK OVERFLOW" ; then drop dup -4 = if 2drop ." STACK UN"
-   ." DERFLOW" ; then drop dup -5 = if 2drop ." RETURN STACK O"
-   ." VERFLOW" ; then drop dup -6 = if 2drop ." RETURN STACK U"
-   ." NDERFLOW" ; then drop dup -7 = if 2drop ." DO-LOOPS NEST"
-   ." ED TOO DEEPLY DURING EXECUTION" ; then drop dup -8 = if
-   2drop ." DICTIONARY OVERFLOW" ; then drop dup -9 = if 2drop
-   ." INVALID MEMORY ADDRESS" ; then drop dup -10 = if 2drop
-   ." DIVISION BY ZERO" ; then drop dup -11 = if 2drop ." RESU"
-   ." LT OUT OF RANGE" ; then drop dup -12 = if 2drop ." ARGUM"
-   ." ENT TYPE MISMATCH" ; then drop dup -13 = if 2drop ." UND"
-   ." EFINED WORD" ; then drop dup -14 = if 2drop ." INTERPRET"
-   ." ING A COMPILE-ONLY WORD" ; then drop dup -15 = if 2drop
-   ." INVALID FORGET" ; then drop dup -16 = if 2drop ." ATTEMP"
-   ." T TO USE ZERO-LENGTH STRING AS A NAME" ; then drop dup
-   -17 = if 2drop ." PICTURED NUMERIC OUTPUT STRING OVERFLOW" ;
-   then drop dup -18 = if 2drop ." PARSED STRING OVERFLOW" ;
-   then drop dup -19 = if 2drop ." DEFINITION NAME TOO LONG" ;
-   then drop dup -20 = if 2drop ." WRITE TO A READ-ONLY LOCATI"
-   ." ON" ; then drop dup -21 = if 2drop ." UNSUPPORTED OPERAT"
-   ." ION" ; then drop dup -22 = if 2drop ." CONTROL STRUCTURE"
-   ."  MISMATCH" ; then drop dup -23 = if 2drop ." ADDRESS ALI"
-   ." GNMENT EXCEPTION" ; then drop dup -24 = if 2drop ." INVA"
-   ." LID NUMERIC ARGUMENT" ; then drop dup -25 = if 2drop
-   ." RETURN STACK IMBALANCE" ; then drop dup -26 = if 2drop
-   ." LOOP PARAMETERS UNAVAILABLE" ; then drop dup -27 = if
-   2drop ." INVALID RECURSION" ; then drop dup -28 = if 2drop
-   ." USER INTERRUPT" ; then drop dup -29 = if 2drop ." COMPIL"
-   ." ER NESTING" ; then drop dup -30 = if 2drop ." OBSOLESCEN"
-   ." T FEATURE" ; then drop dup -31 = if 2drop ." >BODY USED "
-   ." ON NON-CREATED DEFINITION" ; then drop dup -32 = if 2drop
-   ." INVALID NAME ARGUMENT" ; then drop dup -33 = if 2drop
-   ." BLOCK READ EXCEPTION" ; then drop dup -34 = if 2drop
-   ." BLOCK WRITE EXCEPTION" ; then drop dup -35 = if 2drop
-   ." INVALID BLOCK NUMBER" ; then drop dup -36 = if 2drop
-   ." INVALID FILE POSITION" ; then drop dup -37 = if 2drop
-   ." FILE I/O EXCEPTION" ; then drop dup -38 = if 2drop ." NO"
-   ." N-EXISTENT FILE" ; then drop dup -39 = if 2drop ." UNEXP"
-   ." ECTED END OF FILE" ; then drop dup -41 = if 2drop ." INV"
-   ." ALIDBASEFOR FLOATING POINT CONVERSION" ; then drop dup
-   -42 = if 2drop ." LOSS OF PRECISION" ; then drop dup -43 =
-   if 2drop ." FLOATING-POINT DIVIDE BY ZERO" ; then drop dup
-   -44 = if 2drop ." FLOATING-POINT RESULT OUT OF RANGE" ; then
-   drop dup -45 = if 2drop ." FLOATING-POINT STACK OVERFLOW" ;
-   then drop dup -46 = if 2drop ." FLOATING-POINT STACK UNDERF"
-   ." LOW" ; then drop dup -47 = if 2drop ." FLOATING-POINT IN"
-   ." VALID ARGUMENT" ; then drop dup -48 = if 2drop ." COMPIL"
-   ." ATION WORD LIST DELETED" ; then drop dup -49 = if 2drop
-   ." INVALID POSTPONE" ; then drop dup -50 = if 2drop ." SEAR"
-   ." CH-ORDER OVERFLOW" ; then drop dup -51 = if 2drop ." SEA"
-   ." RCH-ORDER UNDERFLOW" ; then drop dup -52 = if 2drop ." C"
-   ." OMPILATION WORD LIST CHANGED" ; then drop dup -53 = if
-   2drop ." CONTROL-FLOW STACK OVERFLOW" ; then drop dup -54 =
-   if 2drop ." EXCEPTION STACK OVERFLOW" ; then drop dup -55 =
-   if 2drop ." FLOATING-POINT UNDERFLOW" ; then drop dup -56 =
-   if 2drop ." FLOATING-POINT UNIDENTIFIED FAULT" ; then drop
-   dup -57 = if 2drop ." QUIT" ; then drop dup -58 = if 2drop
-   ." EXCEPTION IN SENDING OR RECEIVING A CHARACTER" ; then
-   drop dup -59 = if 2drop ." [IF], [ELSE], OR [THEN] EXCEPTIO"
-   ." N" ; then drop dup -60 = if 2drop ." ALLOCATE" ; then
-   drop dup -61 = if 2drop ." FREE" ; then drop dup -62 = if
-   2drop ." RESIZE" ; then drop dup -63 = if 2drop ." CLOSE-FI"
-   ." LE" ; then drop dup -64 = if 2drop ." CREATE-FILE" ; then
-   drop dup -65 = if 2drop ." DELETE-FILE" ; then drop dup -66
-   = if 2drop ." FILE-POSITION" ; then drop dup -67 = if 2drop
-   ." FILE-SIZE" ; then drop dup -68 = if 2drop ." FILE-STATUS"
-   ; then drop dup -69 = if 2drop ." FLUSH-FILE" ; then drop
-   dup -70 = if 2drop ." OPEN-FILE" ; then drop dup -71 = if
-   2drop ." READ-FILE" ; then drop dup -72 = if 2drop ." READ-"
-   ." LINE" ; then drop dup -73 = if 2drop ." RENAME-FILE" ;
-   then drop dup -74 = if 2drop ." REPOSITION-FILE" ; then drop
-   dup -75 = if 2drop ." RESIZE-FILE" ; then drop dup -76 = if
-   2drop ." WRITE-FILE" ; then drop dup -77 = if 2drop ." WRIT"
-   ." E-LINE" ; then drop dup -78 = if 2drop ." MALFORMED XCHA"
-   ." R" ; then drop dup -79 = if 2drop ." SUBSTITUTE" ; then
-   drop -80 = if ." REPLACES" ; then drop ;
+   2drop ." ABORT" '"' emit ; then drop dup -3 = if 2drop
+   ." STACK OVERFLOW" ; then drop dup -4 = if 2drop
+   ." STACK UNDERFLOW" ; then drop dup -5 = if 2drop
+   ." RETURN STACK OVERFLOW" ; then drop dup -6 = if 2drop
+   ." RETURN STACK UNDERFLOW" ; then drop dup -7 = if 2drop
+   ." DO-LOOPS NESTED TOO DEEPLY DURING EXECUTION" ; then drop
+   dup -8 = if 2drop ." DICTIONARY OVERFLOW" ; then drop dup
+   -9 = if 2drop ." INVALID MEMORY ADDRESS" ; then drop dup -10
+   = if 2drop ." DIVISION BY ZERO" ; then drop dup -11 = if
+   2drop ." RESULT OUT OF RANGE" ; then drop dup -12 = if 2drop
+   ." ARGUMENT TYPE MISMATCH" ; then drop dup -13 = if 2drop
+   ." UNDEFINED WORD" ; then drop dup -14 = if 2drop
+   ." INTERPRETING A COMPILE-ONLY WORD" ; then drop dup -15 =
+   if 2drop ." INVALID FORGET" ; then drop dup -16 = if 2drop
+   ." ATTEMPT TO USE ZERO-LENGTH STRING AS A NAME" ; then drop
+   dup -17 = if 2drop
+   ." PICTURED NUMERIC OUTPUT STRING OVERFLOW" ; then drop dup
+   -18 = if 2drop ." PARSED STRING OVERFLOW" ; then drop dup
+   -19 = if 2drop ." DEFINITION NAME TOO LONG" ; then drop dup
+   -20 = if 2drop ." WRITE TO A READ-ONLY LOCATION" ; then drop
+   dup -21 = if 2drop ." UNSUPPORTED OPERATION" ; then drop dup
+   -22 = if 2drop ." CONTROL STRUCTURE MISMATCH" ; then drop
+   dup -23 = if 2drop ." ADDRESS ALIGNMENT EXCEPTION" ; then
+   drop dup -24 = if 2drop ." INVALID NUMERIC ARGUMENT" ; then
+   drop dup -25 = if 2drop ." RETURN STACK IMBALANCE" ; then
+   drop dup -26 = if 2drop ." LOOP PARAMETERS UNAVAILABLE" ;
+   then drop dup -27 = if 2drop ." INVALID RECURSION" ; then 
+   drop dup -28 = if 2drop ." USER INTERRUPT" ; then drop dup
+   -29 = if 2drop ." COMPILER NESTING" ; then drop dup -30 = if
+   2drop ." OBSOLESCENT FEATURE" ; then drop dup -31 = if 2drop
+   ." >BODY USED ON NON-CREATED DEFINITION" ; then drop dup -32
+   = if 2drop ." INVALID NAME ARGUMENT" ; then drop dup -33 =
+   if 2drop ." BLOCK READ EXCEPTION" ; then drop dup -34 = if
+   2drop ." BLOCK WRITE EXCEPTION" ; then drop dup -35 = if
+   2drop ." INVALID BLOCK NUMBER" ; then drop dup -36 = if
+   2drop ." INVALID FILE POSITION" ; then drop dup -37 = if
+   2drop ." FILE I/O EXCEPTION" ; then drop dup -38 = if 2drop
+   ." NON-EXISTENT FILE" ; then drop dup -39 = if 2drop
+   ." UNEXPECTED END OF FILE" ; then drop dup -40 = if 2drop
+   ." INVALID BASE FOR FLOATING POINT CONVERSION" ; then drop
+   dup -41 = if 2drop ." LOSS OF PRECISION" ; then drop dup
+   -42 = if 2drop ." FLOATING-POINT DIVIDE BY ZERO" ; then drop
+   dup -43 = if 2drop ." FLOATING-POINT RESULT OUT OF RANGE" ;
+   then drop dup -44 = if 2drop
+   ." FLOATING-POINT STACK OVERFLOW" ; then drop dup -45 = if
+   2drop ." FLOATING-POINT STACK UNDERFLOW" ; then drop dup -46
+   = if 2drop ." FLOATING-POINT INVALID ARGUMENT" ; then drop
+   dup -47 = if 2drop ." COMPILATION WORD LIST DELETED" ; then
+   drop dup -48 = if 2drop ." INVALID POSTPONE" ; then drop dup
+   -49 = if 2drop ." SEARCH-ORDER OVERFLOW" ; then drop dup -50
+   = if 2drop ." SEARCH-ORDER UNDERFLOW" ; then drop dup -51 =
+   if 2drop ." COMPILATION WORD LIST CHANGED" ; then drop dup
+   -52 = if 2drop ." CONTROL-FLOW STACK OVERFLOW" ; then drop
+   dup -53 = if 2drop ." EXCEPTION STACK OVERFLOW" ; then drop
+   dup -54 = if 2drop ." FLOATING-POINT UNDERFLOW" ; then drop
+   dup -55 = if 2drop ." FLOATING-POINT UNIDENTIFIED FAULT" ;
+   then drop dup -56 = if 2drop ." QUIT" ; then drop dup -57 =
+   if 2drop ." EXCEPTION IN SENDING OR RECEIVING A CHARACTER" ;
+   then drop dup -58 = if 2drop
+   ." [IF], [ELSE], OR [THEN] EXCEPTION" ; then drop dup -59 =
+   if 2drop ." ALLOCATE" ; then drop dup -60 = if 2drop
+   ." FREE" ; then drop dup -61 = if 2drop ." RESIZE" ; then
+   drop dup -62 = if 2drop ." CLOSE-FILE" ; then drop dup -63 =
+   if 2drop ." CREATE-FILE" ; then drop dup -64 = if 2drop
+   ." DELETE-FILE" ; then drop dup -65 = if 2drop
+   ." FILE-POSITION" ; then drop dup -66 = if 2drop
+   ." FILE-SIZE" ; then drop dup -67 = if 2drop ." FILE-STATUS"
+   ; then drop dup -68 = if 2drop ." FLUSH-FILE" ; then drop
+   dup -69 = if 2drop ." OPEN-FILE" ; then drop dup -70 = if
+   2drop ." READ-FILE" ; then drop dup -71 = if 2drop
+   ." READ-LINE" ; then drop dup -72 = if 2drop ." RENAME-FILE"
+   ; then drop dup -73 = if 2drop ." REPOSITION-FILE" ; then
+   drop dup -74 = if 2drop ." RESIZE-FILE" ; then drop dup -75
+   = if 2drop ." WRITE-FILE" ; then drop dup -76 = if 2drop
+   ." WRITE-LINE" ; then drop dup -77 = if 2drop
+   ." MALFORMED XCHAR" ; then drop dup -78 = if 2drop
+   ." SUBSTITUTE" ; then drop -79 = if ." REPLACES" ; then drop
+   ." UNKNOWN EXCEPTION" ;
 : upcase dup ?lower if drop 32 - ; then drop ;
 : uptype swap a! for c@+ upcase emit next ;
 : name? 'name a! @+ @+ uptype '?' emit ;
 : no-frame dup -1 = if 2drop clear-parameters quit ; then drop
    dup -2 = if 2drop type clear-parameters quit ; then drop
    dup -13 = if 2drop name? clear-parameters quit ; then drop
-   message quit ;
+   message '!' emit quit ;
 : resume exception-stack dup cell+ swap @ = if drop no-frame ;
    then drop restore ;
 [ ' resume 'resume ! ]
@@ -306,23 +303,24 @@ variable scratch [ /scratch chars allot ]
    char+ next drop r> r> ?same ;
 [ 0 drop-true ] constant true
 [ 0 drop-false ] constant false
-: environment?
-   2dup s" /COUNTED-STRING" compare 0= if drop 2drop 255 true ;
-   then drop 2dup s" /HOLD" compare 0= if drop 2drop /pictured
-   true ; then drop 2dup s" /PAD" compare 0= if drop 2drop
-   /scratch true ; then drop 2dup s" ADDRESS-UNIT-BITS" compare
-   0= if drop 2drop 8 true ; then drop 2dup s" FLOORED" compare
-   0= if drop 2drop 0 true ; then drop 2dup s" MAX-CHAR"
-   compare 0= if drop 2drop 255 true ; then drop 2dup s" MAX-D"
-   compare 0= if drop 2drop -1 -1 lmb invert and true ; then
-   drop 2dup s" MAX-N" compare 0= if drop 2drop -1 lmb invert
-   and true ; then drop 2dup s" MAX-U" compare 0= if drop 2drop
-   -1 true ; then drop 2dup s" MAX-UD" compare 0= if drop 2drop
-   -1 -1 true ; then drop 2dup s" RETURN-STACK-CELLS" compare
-   0= if drop 2drop 32 true ; then drop s" STACK-CELLS" compare
-   0= if drop 32 true ; then drop false ;
-: evaluate input >r #input >r in >r '#input ! 'input ! 0 >in !
-   interpret r> >in ! r> '#input ! r> 'input ! ;
+: environment? 2dup s" /COUNTED-STRING" compare 0= if drop
+   2drop 255 true ; then drop 2dup s" /HOLD" compare 0= if drop
+   2drop /pictured true ; then drop 2dup s" /PAD" compare 0= if
+   drop 2drop /scratch true ; then drop 2dup
+   s" ADDRESS-UNIT-BITS" compare 0= if drop 2drop 8 true ; then
+   drop 2dup s" FLOORED" compare 0= if drop 2drop 0 true ; then
+   drop 2dup s" MAX-CHAR" compare 0= if drop 2drop 255 true ;
+   then drop 2dup s" MAX-D" compare 0= if drop 2drop -1 -1 msb
+   invert and true ; then drop 2dup s" MAX-N" compare 0= if
+   drop 2drop -1 msb invert and true ; then drop 2dup s" MAX-U"
+   compare 0= if drop 2drop -1 true ; then drop 2dup s" MAX-UD"
+   compare 0= if drop 2drop -1 -1 true ; then drop 2dup
+   s" RETURN-STACK-CELLS" compare 0= if drop 2drop 32 true ;
+   then drop s" STACK-CELLS" compare 0= if drop 32 true ; then
+   drop false ;
+: evaluate state @ >r input >r #input >r in >r '#input ! 'input
+   ! 0 >in ! 1 state ! interpret r> >in ! r> '#input ! r> 'input
+   ! r> state ! ;
 : fill over 0> if drop >r swap a! r> swap for dup c!+ next drop
    ; then drop 2drop ;
 : find dup count find-word dup 0= if drop ; then drop swap drop
@@ -334,7 +332,7 @@ variable scratch [ /scratch chars allot ]
 : loop postpone r> postpone 1+ postpone r> postpone 2dup
    postpone >r postpone >r postpone = postpone until
    postpone r>drop postpone r>drop reslove ; immediate
-: max 2dup < if swap then drop ;
+: max 2dup < if drop swap drop ; then 2drop ;
 : move dup 0> if drop >r swap a! r> for @+ swap >r !r r> next
    drop ; then 2drop 2drop ;
 : s>d dup 0< if drop -1 ; then drop 0 ;
@@ -344,9 +342,8 @@ variable scratch [ /scratch chars allot ]
 : ud. <# #s #> type space ;
 : u. 0 ud. ;
 : unloop postpone r>drop postpone r>drop ; immediate
-: word dup skip-delimiters dup >r input + swap
-   skip-non-delimiters r> - dup #pictured a! c!+ a swap cmove
-   #pictured ;
+: word dup skip dup >r input + swap stop r> - dup #pictured a!
+   c!+ a swap cmove #pictured ;
 : ['] ' postpone literal ; immediate
 : [char] char postpone literal ; immediate
 : erase-chars dup 0= if 2drop ; then drop for 0 c!+ next ;
@@ -377,7 +374,8 @@ variable buffers [ 4096 chars allot ]
 : save-buffers 4 for r@ 1- dup update #updated false swap !
    next ;
 : flush save-buffers 4 for 0 r@ 1- #assigned ! next ;
-: evaluate blk @ >r 0 blk ! evaluate r> blk ! ;
+: core-evaluate evaluate ;
+: evaluate blk @ >r 0 blk ! core-evaluate r> blk ! ;
 : unassign 4 for dup r@ 1- #assigned @ = if drop r> 1-
    #assigned 0 swap ! drop ; then drop next ;
 : load state @ >r blk @ >r input >r #input >r in >r 1 state !
@@ -386,8 +384,7 @@ variable buffers [ 4096 chars allot ]
    state ! ;
 : update true current @ #updated ! ;
 
-
-\ forth               optional file word set               forth
+\ boot                optional file word set               forth
 [ 0 ] constant r/o [ 1 ] constant r/w [ 2 ] constant w/o
 : bin w/o 1+ + ;
 variable 'source-id [ 0 'source-id ! ]
@@ -455,8 +452,7 @@ variable 'buffer [ buffer2 'buffer ! buffer2 buffer1 ! buffer1
 : write-line write-file 0=
    if drop 10 handle fputc 10 <> ; then drop -1 ;
 
-
-\ forth         optional floating-point word set           forth
+\ boot          optional floating-point word set           forth
 [ 32 ] constant /stack variable 'sp [ -1 'sp ! ]
 [ here /stack floats allot ] constant stack
 : sp 'sp @ ;
@@ -464,53 +460,52 @@ variable 'buffer [ buffer2 'buffer ! buffer2 buffer1 ! buffer1
 : ?sign dup 0= if drop 1 ; then drop over c@ '+' = if drop
    +char 1 ; then drop over c@ '-' = if drop +char -1 ; then
    drop 1 ;
-: @float sp dup 0< if drop -4 throw ; then drop floats stack +
-   ;
-: fnegate @float !fnegate drop ;
-: *sign 0< if drop fnegate true ; then drop true ;
-: fraction dup 0= if drop ; then drop over c@ '.' = if drop
-   +char >number ; then drop ;
 : +float sp 1+ dup /stack 1- > if drop -3 throw ; then drop dup
    'sp ! floats stack + ;
-: ud>f +float ud>!f drop ;
-: fdup @float +float !f! drop ;
+: u>f +float u>!f ;
+: @float sp dup 0< if drop -4 throw ; then drop floats stack +
+   ;
 : fdrop sp dup 0< if drop -4 throw ; then drop 1- 'sp ! ;
 : fbinary @float fdrop @float ;
-: f< fbinary swap !f< fdrop ;
-: fover @float 1 floats - dup stack < if drop -4 throw ; then
-   drop +float !f! drop ;
-: f/ fbinary !f/ drop ;
-: fswap sp 1 < if drop -4 throw ; then drop @float !fswap drop
-   ;
-: f+ fbinary !f+ drop ;
-: rest >r fraction >r >r  base @ 0 ud>f ud>f begin fdup 1 0
-   ud>f f< 0= while fover f/ repeat fswap fdrop r> r> f+ r>
-   *sign ;
-: significand ?sign >r dup >r >r >r 0 0 r> r> >number dup r> =
-   if drop r>drop 2drop ud>f false ; then drop >r >r ud>f 0 0
-   r> r> r> rest ;
+: f* fbinary !f* ;
+: f+ fbinary !f+ ;
+: digits 0 u>f begin dup 0> while over c@ dup ?digit over
+   ?alpha or 0= if 2drop ; then drop c>d dup base @ >= if 2drop
+   ; then drop base @ u>f f* u>f f+ +char repeat ;
+: fswap sp 1 < if drop -4 throw ; then drop @float !fswap ;
 : ?e dup 'D' = if 2drop true ; then drop dup 'd' = if 2drop
    true ; then drop dup 'E' = if 2drop true ; then drop 'e' =
    if drop true ; then drop false ;
 : e over c@ ?e 0= if drop ; then drop +char ;
-: f* fbinary !f* drop ;
+: fnegate @float !fnegate ;
+: *sign 0< if drop fnegate true ; then drop true ;
+: ud>f 0 invert u>f u>f f* u>f f+ ;
+: fover @float 1 floats - dup stack < if drop -4 throw ; then
+   drop +float !f! ;
+: f/ fbinary !f/ ;
 : **sign base @ 0 ud>f fswap 0> if drop for fover f* next fswap
    fdrop true ; then drop for fover f/ next fswap fdrop true ;
-: exponent e ?sign >r >number 0> if drop r> 2drop 2drop false ;
-   then drop 2drop dup 0= if 2drop r>drop true ; then drop r>
-   **sign ;
-: >float significand 0= if drop false ; then drop >r >r 0 0 r>
-   r> dup 0= if drop 1 ; then drop exponent ;
+: exponent >r fswap fdrop f+ e ?sign >r >r >r 0 0 r> r> >number
+   0> if 2drop 2drop r>drop r>drop false ; then drop 2drop dup
+   0= if 2drop r>drop r> *sign ; true ; then drop r> **sign r>
+   *sign ;
+: >float ?sign >r digits over c@ '.' = if drop +char dup >r
+   digits base @ u>f fswap r> over - dup 0= if 2drop r>
+   exponent ; then drop for fover f/ next r> exponent ; then
+   drop 2drop r>drop fdrop false ;
 : d>f dup 0< if drop dnegate ud>f fnegate ; then drop ud>f ;
-: f! @float swap !f! drop fdrop ;
-: f- fbinary !f- drop ;
+: f! @float swap !f! fdrop ;
+: f- fbinary !f- ;
 : f0< @float !f0< fdrop ;
 : f0= @float !f0= fdrop ;
-: floor @float !floor drop ;
-: uf>d fdup 0 1 d>f f< if drop floor 0 ; then fdup 0 1 d>f
-   fover fover f/ f* f- floor 0 1 d>f f/ floor ;
-: f>d fdup f0< if drop fnegate uf>d dnegate ; then drop uf>d ;
-: f@ +float !f! drop ;
+: f< fbinary swap !f< fdrop ;
+: fdup @float +float !f! ;
+: fabs fdup f0< if drop fnegate ; then drop ;
+: f>s @float f@>s fdrop ;
+: f>d fdup f0< >r fabs fdup
+   0 invert u>f 1 u>f f+ fover fover f/ f>s dup u>f
+   f*  f- f>s swap r> if drop dnegate ; then drop ;
+: f@ +float !f! ;
 : faligned 1 floats align-number ;
 : falign here faligned 'here ! ;
 : fconstant open postpone f@ ret ,slot here swap ! here 1
@@ -523,17 +518,42 @@ variable 'buffer [ buffer2 'buffer ! buffer2 buffer1 ! buffer1
 : fmax fover fover f< if drop fswap fdrop ; then drop fdrop ;
 : fmin fover fover f< 0= if drop fswap fdrop ; then drop fdrop
    ;
-: frot sp 2 < if drop -4 throw ; then drop @float !frot drop ;
-: fround @float !fround drop ;
+: frot sp 2 < if drop -4 throw ; then drop @float !frot ;
 : fvariable open ret ,slot align here swap ! 1 floats allot ;
    immediate
-: fabs f0< if drop fnegate ; then drop ;
-: significand >r >r uf>d <# #s #> r> swap r> swap over min dup
-   >r swap over  - >r over over chars + >r cmove r> r> r> ;
-: represent fdup fdup fabs fdup floor significand >r dup
-   dup 0= if drop ; then drop fdup floor f- for base @
-   0 d>f f* next fround significand drop 2drop r> f0< true ;
-: f. @float float. space fdrop ;
+: fhalf s" 0.5" >float drop ;
+fvariable 'fhalf [ fhalf 'fhalf f! ]
+: fzero s" 0.0" >float drop ;
+fvariable 'fzero [ fzero 'fzero f! ]
+: s>f dup 0< if drop u>f fnegate ; then drop u>f ;
+: digit fover fover f/ f>s fswap fover dup s>f f* f- fswap base
+   @ u>f f/ ;
+: ?round 1 = if drop digit 5 < if drop ; then drop 1+ ; then
+   drop ;
+: write-significand >r swap >r swap for r@ ?round d>c over c!
+   char+ digit next 2drop r> r> fdrop fdrop true ;
+: write-digits >r fover f0= if drop 0 r> write-significand ;
+   then drop digit begin dup 0= while drop 1- digit repeat r>
+   write-significand ;
+: represent fdup f0< >r fabs fdup 1 u>f f- f0< if drop 0 1 u>f
+   r> write-digits ; then drop 1 1 u>f begin fover fover f/
+   base @ u>f f- f0< 0= while base @ u>f f* 1+ repeat
+   r> write-digits ;
+: floor #pictured 64 represent drop >r dup 0= if 2drop r>drop 0
+   u>f ; then drop dup 0< if 2drop r>drop 0 u>f ; then drop
+   base @ u>f 0 u>f #pictured a! for fover f* c@+ c>d u>f f+
+   next fswap fdrop r> if drop fnegate ; then drop ;
+: fround 'fhalf f@ fover 'fzero f@ f< if drop f- floor ; then
+   drop f+ floor ;
+: ?sign if drop '-' emit ; then drop ;
+: -f. ." 0." 1+ dup 0= if 2drop #pictured 6 type space ; then
+   drop -6 max dup negate for '0' emit next 6 + dup 0= if drop
+   space ; then drop #pictured swap type space ;
+: +f. #pictured over type '.' emit chars #pictured + 6 type
+   space ;
+: f. #pictured /pictured represent drop ?sign dup 0= if 2drop
+   ." 0.000000" space ; then drop dup 0< if drop -f. ; then
+   drop +f. ;
 : ?e dup 0= if 2drop false ; then drop swap a! for c@+ dup 'E'
    = swap 'e' = or if drop true r>drop ; then drop next false ;
 : fnumber >float if drop state @ 0= if drop postpone fliteral ;
@@ -542,9 +562,15 @@ variable 'buffer [ buffer2 'buffer ! buffer2 buffer1 ! buffer1
 : ?word 'name a! over !+ dup !+ 2dup find-word dup 0= if 2drop
    ?fnumber ; then drop >r 2drop r> dup flag + @ state @ or if
    drop execute ; then drop code + @ ,call ;
-: interpret ?eoi if drop ; then drop parse-name ?word interpret
-   ;
+: interpret ?eoi if drop ; then drop parse-name
+   dup 0= if drop 2drop interpret ; then drop ?word interpret ;
 : cr 10 emit ;
 : read-eval cr read-input interpret ." OK" read-eval ;
 : quit clear-returns terminal 'input ! read-eval ;
-[ quit ]
+: no-frame dup -1 = if 2drop clear-parameters quit ; then drop
+   dup -2 = if 2drop type clear-parameters quit ; then drop
+   dup -13 = if 2drop name? clear-parameters quit ; then drop
+   message '!' emit quit ;
+: resume exception-stack dup cell+ swap @ = if drop no-frame ;
+   then drop restore ;
+[ ' resume 'resume ! quit ]

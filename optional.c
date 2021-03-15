@@ -16,7 +16,6 @@
 ******************************************************************************/
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <setjmp.h>
@@ -26,14 +25,14 @@
 typedef float Floating;
 
 static char *
-malloc_never_fails (Cell u)
+allocate_c_string (Cell u)
 {
-  char *p;
+  Cell _data_pointer;
 
-  p = malloc (sizeof (char) * u);
-  if (p == NULL)
-    fatal_error ("MALLOC FAILED");
-  return p;
+  _data_pointer = *data_pointer;
+  if ((Unsigned_Cell) (_data_pointer + u) > *vocabulary)
+    THROW (-8);
+  return (char *) A (_data_pointer);
 }
 
 static char *
@@ -44,7 +43,7 @@ make_c_string (Cell c_addr, Cell u)
   char *name;
 
   string = (Character *) A (c_addr);
-  name = malloc_never_fails (sizeof (char) * (u + 1));
+  name = allocate_c_string (sizeof (char) * (u + 1));
   for (i = 0; i < u; i++)
     name[i] = string[i];
   name[i] = 0;
@@ -62,12 +61,9 @@ _fopen (Cell c_addr, Cell u, Cell fam, Cell fp)
 {
   static char *fam_to_mode[6] =
     { "r", "r+", "w", "rb", "rb+", "wb" };
-  char *name;
   FILE *f;
 
-  name = make_c_string (c_addr, u);
-  f = fopen (name, fam_to_mode[fam]);
-  free (name);
+  f = fopen (make_c_string (c_addr, u), fam_to_mode[fam]);
   if (f != NULL)
     {
       *(FILE **) A (fp) = f;
@@ -88,13 +84,7 @@ _fclose (Cell fp)
 static Cell
 _fremove (Cell c_addr, Cell u)
 {
-  int result;
-  char *name;
-
-  name = make_c_string (c_addr, u);
-  result = remove (name);
-  free (name);
-  return result;
+  return remove (make_c_string (c_addr, u));
 }
 
 static Cell
@@ -124,8 +114,7 @@ _ferror (Cell fp)
 static Cell
 _fseek (Cell offset, Cell fp, Cell from)
 {
-  return fseek (*(FILE **) A (fp),
-		offset * sizeof (Character), from);
+  return fseek (*(FILE **) A (fp), offset * sizeof (Character), from);
 }
 
 static Cell
@@ -177,16 +166,6 @@ floats (Cell n)
 }
 
 static Cell
-_floor (Cell r)
-{
-  Cell n;
-
-  n = (Cell) (*(Floating *) A (r));
-  (*(Floating *) A (r)) = (Floating) n;
-  return n;
-}
-
-static Cell
 fnegate (Cell r)
 {
   return (Cell) ((*(Floating *) A (r)) = -(*(Floating *) A (r)));
@@ -197,25 +176,9 @@ frot (Cell r)
 {
   Floating *r1, *r2, *r3, t;
 
-  r3 = (Floating *) A (r);
-  r2 = r3 - 1;
-  r1 = r2 - 1;
-  t = *r3;
-  *r3 = *r1;
-  *r1 = *r2;
-  return (Cell) (*r2 = t);
-}
-
-static Cell
-fround (Cell r)
-{
-  Cell n;
-  Floating x;
-
-  x = (*(Floating *) A (r));
-  n = (x < 0.0) ? (Cell) (x - 0.5) : (Cell) (x + 0.5);
-  (*(Floating *) A (r)) = (Floating) n;
-  return n;
+  r3 = (Floating *) A (r); r2 = r3 - 1; r1 = r2 - 1;
+  t = *r3; *r3 = *r1; *r1 = *r2; *r2 = t;
+  return 0;
 }
 
 static Cell
@@ -243,17 +206,16 @@ f_zero_equals (Cell r)
 }
 
 static Cell
-ud_to_f (Cell l, Cell h, Cell r)
+f_to_s (Cell r)
 {
-  static Unsigned_Cell zero = 0;
-  Floating x, fh, fl, fz;
+  return (Cell) (*(Floating *) A (r));
+}
 
-  fh = (Unsigned_Cell) h;
-  fl = (Unsigned_Cell) l;
-  fz = (Unsigned_Cell) (~zero);
-  x = fh * fz + fl;
-  (*(Floating *) A (r)) = x;
-  return (Cell) x;
+static Cell
+u_to_f (Cell u, Cell r)
+{
+  (*(Floating *) A (r)) = (Unsigned_Cell) u;
+  return 0;
 }
 
 static Cell
@@ -270,13 +232,13 @@ long_dot (Cell low, Cell high)
   d = (unsigned) high;
   d <<= sizeof (int) * 8;
   d |= (unsigned) low;
-  return printf ("%ld:%lu ", d, d);
+  return printf ("%ld(%lu) ", d, d);
 }
 
 static Cell
 float_dot (Cell r)
 {
-  return printf ("%f", (*(Floating *) A (r)));
+  return printf ("%f ", (*(Floating *) A (r)));
 }
 
 void
@@ -292,22 +254,21 @@ optional (void)
   function ("FERROR", (Callable) _ferror, 1);
   function ("FSEEK", (Callable) _fseek, 3);
   function ("FTELL", (Callable) _ftell, 1);
-  function ("!F!", (Callable) f_store, 2);
-  function ("!F*", (Callable) f_star, 2);
-  function ("!F+", (Callable) f_plus, 2);
-  function ("!F-", (Callable) f_minus, 2);
-  function ("!F/", (Callable) f_slash, 2);
+  routine ("!F!", (Callable) f_store, 2);
+  routine ("!F*", (Callable) f_star, 2);
+  routine ("!F+", (Callable) f_plus, 2);
+  routine ("!F-", (Callable) f_minus, 2);
+  routine ("!F/", (Callable) f_slash, 2);
   function ("!F<", (Callable) f_less_than, 2);
   function ("FLOATS", (Callable) floats, 1);
-  function ("!FLOOR", (Callable) _floor, 1);
-  function ("!FNEGATE", (Callable) fnegate, 1);
-  function ("!FROT", (Callable) frot, 1);
-  function ("!FROUND", (Callable) fround, 1);
-  function ("!FSWAP", (Callable) fswap, 1);
+  routine ("!FNEGATE", (Callable) fnegate, 1);
+  routine ("!FROT", (Callable) frot, 1);
+  routine ("!FSWAP", (Callable) fswap, 1);
   function ("!F0<", (Callable) f_zero_less_than, 1);
   function ("!F0=", (Callable) f_zero_equals, 1);
-  function ("UD>!F", (Callable) ud_to_f, 3);
+  function ("F@>S", (Callable) f_to_s, 1);
+  routine ("U>!F", (Callable) u_to_f, 2);
   routine ("INT.", (Callable) int_dot, 1);
   routine ("LONG.", (Callable) long_dot, 2);
-  routine ("FLOAT.", (Callable) float_dot, 1);
+  routine ("FLOAT@.", (Callable) float_dot, 1);
 }

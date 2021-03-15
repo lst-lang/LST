@@ -33,9 +33,8 @@
 #define CONSTANT(n) *(Cell *) A (open ()) = (n); S (RET)
 #define MEMBER_OFFSET(t, m) ((size_t) &((t *)0)->m)
 
-static Cell comma_slot_macro, read_input_macro, skip_delimiters_macro,
-  skip_non_delimiters_macro, find_word_macro,
-  parse_number_macro, literal_macro, compile_call_macro;
+static Cell comma_slot_macro, read_input_macro, skip_macro, stop_macro,
+  find_word_macro, parse_number_macro, literal_macro, compile_call_macro;
 static Cell last_opcode, last_slot, last_word;
 
 static Cell
@@ -125,27 +124,25 @@ read_input (void)
 }
 
 static Cell
-skip_delimiters (Cell c)
+skip (Cell c)
 {
   Character *buffer;
 
   buffer = (Character *) A (*input_buffer);
   while (*in < *number_input_buffer
-	 && (buffer[*in] == c ||
-	     (c == ' ' && isspace (buffer[*in]))))
+	 && (buffer[*in] == c || (c == ' ' && isspace (buffer[*in]))))
     (*in)++;
   return *in;
 }
 
 static Cell
-skip_non_delimiters (Cell c)
+stop (Cell c)
 {
   Character *buffer;
 
   buffer = (Character *) A (*input_buffer);
   while (*in < *number_input_buffer
-	 && !(buffer[*in] == c ||
-	      (c == ' ' && isspace (buffer[*in]))))
+	 && !(buffer[*in] == c || (c == ' ' && isspace (buffer[*in]))))
     (*in)++;
   return *in;
 }
@@ -161,11 +158,10 @@ __define (void)
 {
   Cell n, l;
 
-  n = skip_delimiters (' ');
-  l = skip_non_delimiters (' ') - n;
+  n = skip (' ');
+  l = stop (' ') - n;
   F (NOP);
-  define ((Character *) A (*input_buffer) + n,
-	  l, *vocabulary);
+  define ((Character *) A (*input_buffer) + n, l, *vocabulary);
 }
 
 static Cell
@@ -184,8 +180,7 @@ _return (void)
       Cell offset, *word_pointer;
 
       offset = sizeof (Cell) - (last_word - last_slot);
-      word_pointer = (Cell *) (dictionary + last_word
-			       - sizeof (Cell));
+      word_pointer = (Cell *) (dictionary + last_word - sizeof (Cell));
       *word_pointer &= ~MASK_SLOT (0xff, offset);
       *word_pointer |= MASK_SLOT (OP_JMP, offset);
       last_opcode = OP_JMP;
@@ -266,15 +261,9 @@ parse_number (Cell c_addr, Cell u)
 
       for (n = 0; u > 0; u--)
 	if (!isdigit (*name))
-	  {
-	    put_string (stderr, (Character *) A (c_addr), u);
-	    puts ("?");
-	    exit (1);
-	  }
+	  fatal_error ("BAD NUMBER");
 	else
-	  {
-	    n = n * 10 + *name++ - '0';
-	  }
+	  n = n * 10 + *name++ - '0';
       return n * sign;
     }
 }
@@ -311,9 +300,9 @@ if_end (void)
 static Cell
 if_not_found (void)
 {
-  L (' '); C (skip_delimiters_macro);
-  LO (input_buffer); S (FETCH); S (OVER); S (PLUS); S (SWAP);
-  L (' '); C (skip_non_delimiters_macro); S (SWAP); S (MINUS);
+  L (' '); C (skip_macro); LO (input_buffer);
+  S (FETCH); S (OVER); S (PLUS); S (SWAP); L (' ');
+  C (stop_macro); S (SWAP); S (MINUS);
   S (OVER); S (OVER); C (find_word_macro); S (DUP);
   S (ZERO_EQUALS); return _if ();
 }
@@ -321,17 +310,14 @@ if_not_found (void)
 static void
 do_word (Cell next)
 {
-  Cell compiling;
+  Cell interpreting;
 
-  S (R_FETCH); S (R_FROM);
-  L (MEMBER_OFFSET (Entry, code_pointer));
-  S (PLUS); S (FETCH); S (TO_R);
-  L (MEMBER_OFFSET (Entry, flag));
-  S (PLUS); S (FETCH); LO (state); S (FETCH);
-  S (OR); compiling = _if (); S (DROP);
-  S (EX); F (NOP); SW (JMP, next);
-  then (compiling); S (DROP);
-  S (R_FROM); C (compile_call_macro); SW (JMP, next);
+  S (R_FETCH); S (R_FROM); L (MEMBER_OFFSET (Entry, code_pointer));
+  S (PLUS); S (FETCH); S (TO_R); L (MEMBER_OFFSET (Entry, flag));
+  S (PLUS); S (FETCH); LO (state); S (FETCH); S (OR);
+  interpreting = _if (); S (DROP); S (EX); F (NOP); SW (JMP, next);
+  then (interpreting); S (DROP); S (R_FROM); C (compile_call_macro);
+  SW (JMP, next);
 }
 
 static void
@@ -339,10 +325,10 @@ do_number (Cell next)
 {
   Cell interpreting;
 
-  C (parse_number_macro);
-  LO (state); S (FETCH); interpreting = _if (); S (DROP);
-  SW (JMP, next); then (interpreting); S (DROP);
-  C (literal_macro); SW (JMP, next);
+  C (parse_number_macro); LO (state); S (FETCH);
+  interpreting = _if (); S (DROP); SW (JMP, next);
+  then (interpreting); S (DROP); C (literal_macro);
+  SW (JMP, next);
 }
 
 static void
@@ -350,9 +336,8 @@ parse_word (Cell next)
 {
   Cell word_or_number;
   
-  word_or_number = if_not_found (); S (DROP);
-  S (DROP); do_number (next);
-  then (word_or_number); S (DROP);
+  word_or_number = if_not_found (); S (DROP); S (DROP);
+  do_number (next); then (word_or_number); S (DROP);
   S (TO_R); S (DROP); S (DROP); do_word (next);
 }
 
@@ -361,10 +346,9 @@ interpret (void)
 {
   Cell tail, next, end_of_line;
 
-  F (NOP); tail = *data_pointer;
-  C (read_input_macro); F (NOP); next = *data_pointer;
-  end_of_line = if_end (); S (DROP); SW (JMP, tail);
-  then (end_of_line); S (DROP); parse_word (next);
+  F (NOP); tail = *data_pointer; C (read_input_macro); F (NOP);
+  next = *data_pointer; end_of_line = if_end (); S (DROP);
+  SW (JMP, tail); then (end_of_line); S (DROP); parse_word (next);
 }
 
 static Cell
@@ -388,8 +372,7 @@ declare (void)
   declares[8] = MEMBER_OFFSET (Entry, flag);
   declares[9] = MEMBER_OFFSET (Entry, code_pointer);
   declares[10] = MEMBER_OFFSET (Entry, parameter);
-  declares[11] = (Cell) ((((Unsigned_Cell) 1)
-			  << (sizeof (Cell) * 8 - 1)));
+  declares[11] = (Cell) ((((Unsigned_Cell) 1) << (sizeof (Cell) * 8 - 1)));
   CONSTANT (declares[count++]);
   return 0;
 }
@@ -419,10 +402,9 @@ primitive (Cell n)
 {
   Cell interpreting;
 
-  __define ();
-  LO (state); S (FETCH); interpreting = _if (); S (DROP);
-  comma_slot (n); _return (); then (interpreting); S (DROP);
-  L (n); C (comma_slot_macro); _return (); immediate ();
+  __define (); LO (state); S (FETCH); interpreting = _if ();
+  S (DROP); comma_slot (n); _return (); then (interpreting);
+  S (DROP); L (n); C (comma_slot_macro); _return (); immediate ();
   return n + 1;
 }
 
@@ -433,8 +415,7 @@ opcode (Cell n)
   return n + 1;
 }
 
-
-Cell
+static Cell
 fetch_block (Cell b, Cell u)
 {
   FILE *f;
@@ -448,15 +429,13 @@ fetch_block (Cell b, Cell u)
       THROW (-35);
       return 0;
     }
-  else if (fseek (f, b * 1024 * sizeof (Character),
-		  SEEK_SET) != 0)
+  else if (fseek (f, b * 1024 * sizeof (Character), SEEK_SET) != 0)
     {
       fclose (f);
       THROW (-35);
       return 0;
     }
-  else if (fread ((char *) A (u), sizeof (Character),
-		  1024, f) != 1024)
+  else if (fread ((char *) A (u), sizeof (Character), 1024, f) != 1024)
     {
       fclose (f);
       THROW (-33);
@@ -469,7 +448,7 @@ fetch_block (Cell b, Cell u)
     }
 }
 
-Cell
+static Cell
 store_block (Cell b, Cell u)
 {
   FILE *f;
@@ -483,15 +462,13 @@ store_block (Cell b, Cell u)
       THROW (-35);
       return 0;
     }
-  else if (fseek (f, b * 1024 * sizeof (Character),
-		  SEEK_SET) != 0)
+  else if (fseek (f, b * 1024 * sizeof (Character), SEEK_SET) != 0)
     {
       fclose (f);
       THROW (-35);
       return 0;
     }
-  else if (fwrite ((char *) A (u), sizeof (Character),
-		   1024, f) != 1024)
+  else if (fwrite ((char *) A (u), sizeof (Character), 1024, f) != 1024)
     {
       fclose (f);
       THROW (-34);
@@ -504,21 +481,9 @@ store_block (Cell b, Cell u)
     }
 }
 
-static Cell
-define_boot (void)
+static void
+core (void)
 {
-  Cell boot;
-
-  F (NOP); boot = *data_pointer;
-  S (CLEAR_PARAMETER_STACK); S (CLEAR_RETURN_STACK);
-  interpret ();
-  return boot;
-}
-
-void
-boot (void)
-{
-  reset_system ();
   routine (",WORD", (Callable) comma_word, 1);
   function (",SLOT-WORD", (Callable) comma_slot_word, 2);
   routine (",FILL-NOP", (Callable) comma_fill_nop, 0);
@@ -537,22 +502,34 @@ boot (void)
   function (">>", (Callable) primitive, 1);
   function ("|", (Callable) opcode, 1);
   comma_slot_macro = routine (",SLOT", (Callable) comma_slot, 1);
-  read_input_macro = routine
-    ("READ-INPUT", (Callable) read_input, 0);
-  skip_delimiters_macro = function
-    ("SKIP-DELIMITERS", (Callable) skip_delimiters, 1);
-  skip_non_delimiters_macro = function
-    ("SKIP-NON-DELIMITERS", (Callable) skip_non_delimiters, 1);
-  find_word_macro =
-    function ("FIND-WORD", (Callable) _find_word, 2);
-  parse_number_macro = function
-    ("PARSE-NUMBER", (Callable) parse_number, 2);
-  literal_macro = routine
-    ("LITERAL", (Callable) literal, 1); immediate ();
-  compile_call_macro = routine
-    (",CALL", (Callable) compile_call, 1);
+  read_input_macro = routine ("READ-INPUT", (Callable) read_input, 0);
+  skip_macro = function ("SKIP", (Callable) skip, 1);
+  stop_macro = function ("STOP", (Callable) stop, 1);
+  find_word_macro = function ("FIND-WORD", (Callable) _find_word, 2);
+  parse_number_macro = function ("PARSE-NUMBER", (Callable) parse_number, 2);
+  literal_macro = routine ("LITERAL", (Callable) literal, 1); immediate ();
+  compile_call_macro = routine (",CALL", (Callable) compile_call, 1);
   function ("@BLOCK", (Callable) fetch_block, 2);
   function ("!BLOCK", (Callable) store_block, 2);
+}
+
+static Cell
+driver (void)
+{
+  Cell _driver;
+
+  F (NOP); _driver = *data_pointer;
+  S (CLEAR_PARAMETERS); S (CLEAR_RETURNS); interpret ();
+  return _driver;
+}
+
+void
+boot (void)
+{
+  if (CATCH != 0)
+    fatal_error ("BOOT FAILED");
+  reset_system ();
+  core ();
   optional ();
-  execute (define_boot ());
+  execute (driver ());
 }
