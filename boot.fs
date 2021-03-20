@@ -25,7 +25,7 @@ declare msb declare /cell declare /char
 >> xor >> 2* >> u2/ >> 2/ >> rshift >> lshift >> drop-true
 >> drop-false >> 0= >> 0< >> u> >> u< >> = >> u>= >> u<= >> <>
 >> > >> < >> >= >> <= >> >r >> r> >> r@ >> r>drop >> @ >> !
->> c@ >> c! | lit | jmp | jz | drjne | call | ret >> ex >> a
+>> c@ >> c! | lit | jmp | jz | drjne | call | ret | %ex >> a
 >> a! >> @a >> !a >> @+ >> !+ >> @r >> !r >> c@a >> c!a >> c@+
 >> c!+ >> c@r >> c!r >> save >> restore >> pick >> rpick
 >> depth >> mod >> umod >> negate | macro >> clear-parameters
@@ -37,8 +37,10 @@ declare msb declare /cell declare /char
 : aligned 1 cells align-number ;
 : here 'here @ ;
 : align 'here a! @a aligned !a ;
-: variable open ret ,slot align here swap ! 1 cells allot ;
+: data open drop lit 0 ,slot-word ;
+: variable data ret ,slot align here swap ! 1 cells allot ;
    immediate
+: ex %ex ,slot ,fill-nop ; immediate
 : execute code + @ >r ex ;
 : throw 'resume @ execute ;
 : in >in @ ;
@@ -54,7 +56,7 @@ declare msb declare /cell declare /char
 : 2drop drop drop ;
 : parse ?eoi if 2drop 0 0 ; then drop +in in length ;
 : 2dup over over ;
-: constant open ! ret ,slot ; immediate
+: constant data ! ret ,slot ; immediate
 [ 32 ] constant bl
 : ' bl parse 2dup find-word dup 0= if drop -13 throw ; then
    drop >r 2drop r> ;
@@ -140,7 +142,7 @@ variable leaves
 : 2@ dup cell+ @ swap @ ;
 : 2over 3 pick 3 pick ;
 : 2swap >r -rot r> -rot ;
-: >body parameter + @ ;
+: >body parameter + ;
 : ?digit dup 47 > swap 58 < and ;
 : ?lower dup 96 > swap 123 < and ;
 : ?upper dup 64 > swap 91 < and ;
@@ -285,12 +287,14 @@ variable exception-stack [ /frame cells /exception-stack *
 : count a! c@+ a swap ;
 variable created [ 0 created ! ]
 : nothing ;
-: create open jmp [ ' nothing ] literal code + @ ,slot-word
-   created ! align here swap ! ; immediate
+: create open lit 0 ,slot-word jmp [ ' nothing ] literal code +
+   @ ,slot-word created ! align here swap ! here swap >body ! ;
+   immediate
 : decimal 10 base ! ;
 : do postpone swap postpone >r postpone >r 0 leaves ! ,fill-nop
    here ; immediate
-: does> align here ,fill-nop created @ ! ; immediate
+: does> lit 0 ,slot-word postpone created postpone @ postpone !
+   ret ,slot align here ,fill-nop swap ! ; immediate
 : else jmp -1 ,slot-word ,fill-nop swap here swap ! ; immediate
 [ 128 ] constant /scratch
 variable scratch [ /scratch chars allot ]
@@ -383,6 +387,10 @@ variable buffers [ 4096 chars allot ]
    blk @ unassign r> >in ! r> '#input ! r> 'input ! r> blk ! r>
    state ! ;
 : update true current @ #updated ! ;
+: uninitialized ." UNINITIALIZED DEFERED WORD." ;
+: defer postpone create ['] uninitialized code + @ , does> @ >r
+   ex ; immediate
+: defer! >r code + @ r> >body @ ! ;
 
 \ boot                optional file word set               forth
 [ 0 ] constant r/o [ 1 ] constant r/w [ 2 ] constant w/o
@@ -508,7 +516,7 @@ variable 'buffer [ buffer2 'buffer ! buffer2 buffer1 ! buffer1
 : f@ +float !f! ;
 : faligned 1 floats align-number ;
 : falign here faligned 'here ! ;
-: fconstant open postpone f@ ret ,slot here swap ! here 1
+: fconstant data postpone f@ ret ,slot here swap ! here 1
    floats allot f! ;
 : fdepth sp 1+ ;
 : fliteral jmp -1 ,slot-word here >r 1 floats allot align here
@@ -519,7 +527,7 @@ variable 'buffer [ buffer2 'buffer ! buffer2 buffer1 ! buffer1
 : fmin fover fover f< 0= if drop fswap fdrop ; then drop fdrop
    ;
 : frot sp 2 < if drop -4 throw ; then drop @float !frot ;
-: fvariable open ret ,slot align here swap ! 1 floats allot ;
+: fvariable data ret ,slot align here swap ! 1 floats allot ;
    immediate
 : fhalf s" 0.5" >float drop ;
 fvariable 'fhalf [ fhalf 'fhalf f! ]

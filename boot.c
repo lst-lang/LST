@@ -30,7 +30,7 @@
 #define LO(v) L (O (v))
 #define F(c) fill_instruction_word (OP_##c)
 #define C(p) compile_call (p)
-#define CONSTANT(n) *(Cell *) A (open ()) = (n); S (RET)
+#define CONSTANT(n) open (); L (n); S (RET)
 #define MEMBER_OFFSET(t, m) ((size_t) &((t *)0)->m)
 
 static Cell comma_slot_macro, read_input_macro, skip_macro, stop_macro,
@@ -287,7 +287,7 @@ static Cell
 open (void)
 {
   __define ();
-  return L (0);
+  return *vocabulary;
 }
 
 static Cell
