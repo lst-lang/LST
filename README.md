@@ -20,169 +20,141 @@ The implementation would consist of four basic components:
 
 # Language
 ## Data Types
-* Basic Types: `INT`, `REAL`, `CHAR`, `BOOL`
-* Array: `[0:10] INT`, `[10,10] INT`, `FLEX [] CHAR`
-* Reference/Pointer: `REF INT`, `REF REF INT`, `REF ANY`
-* Functional/Procedural: `FORMAL (OF INT, OF INT) VOID`
-* Structure/Record: `STRUCT (length OF INT, width OF INT)`
-* Union: `UNION (n1 OF INT, n2 OF INT, n3 OF INT)`
+* Basic Types: `INTEGER`, `REAL`, `STRING`, `LOGICAL`, `ATOM`, `SYMBOL`
+* Array: `INTEGER ARRAY`, `ARRAY`, `STRING ARRAY`
+* Reference: `INTEGER REFERENCE`, `REFERENCE`
+* Functional: `INTEGER ARRAY[1:10] FUNCTIONAL(REAL)`
+* Structure: `STRUCTURE (INTEGER l, w)`
+* Union: `UNION (INTEGER n1, n2; REAL r1)`
 
 
 ## Statements
 * Assignment: `a := 1`, `b := 3.0`
 * Conditional: `IF a > b THEN a ELSE b`
-* Compound: `PROG; a := 1; b := 3.0 END`
-* Block (Compound with local variables): `PROG a b c; ... END`
-* Return (in Compound or Block): `RETURN <result>`
-* Goto: `PROG; label: a := 1; GO label END`
-* Function: `FUN max a b; IF a > b THEN a ELSE b`
-* Type definition: `TYPE STRING = FLEX [] CHAR`
-* Cast: `REF INT (refany)`
+* Compound Statements: `BEGIN a := 1; b := 3.0 END`
+* Block: `BEGIN INTEGER a, b, c; ... END`
+* Return: `RETURN` or `RETURN <result>`
+* Goto: `BEGIN label: a := 1; GO TO label END` or `GO label`
+* Procedure: `INTEGER PROCEDURE max(a, b) := IF a > b THEN a ELSE b`
+* Type definition: `DEFINE TYPE COMPLEX = STRUCTURE (REAL a, b)`
+* Cast: `INTEGER PROCEDURE() (refproc)`
+* Comment: `COMMENT <any sequence not containing ;>;`
 
 
 ## Declaration
-A declaration statement specifies the type of variables and functions.
-Without explicit declaration, all variables and functions are assigned
-a type of `SEXPR`. All types of objects can be converted to s-expressions
-and back without losing data.
+Complete specifications are required in procedure declarations if the
+item is other than a simple variable of the same type as the procedure.
 ```
-FUN max a b;
-   INT a b; TYPE INT;
-   IF a > b THEN a ELSE b
+INTEGER PROCEDURE step(REAL u)
+   := IF 0 <= u AND u <= 1 THEN 1 ELSE 0
 ```
 
 Translate to s-expressions:
 ```
-'DEFINE' ((
-(('FUNCTION' MAX)
-   ('LAMBDA' (A B)
-      ('INTEGER' (A B)) ('TYPE' 'INTEGER')
-      ('IF' ('GREATERP' A B) 'THEN' A 'ELSE' B)))
-))
+('INTEGER' 'PROCEDURE' STEP (('REAL' U))
+   ('IF' (AND ('LESSEQUAL' 0 U) ('GREATEREQUAL' U 1))
+      'THEN' 1 'ELSE' 0))
 ```
 
 
 ## Functional
-A functional can be used to set a `FORMAL` variable, or as a `FORMAL` argument of a function. The syntax to create a functional is `FUN <parameters>; (<expression>; <functional-arguments>)`, where the `<functional-arguments>` are variables used in the `<expression>` which must be evaluated at the time the functional argument is set up. 
+A functional can be used to set a `FUNCTIONAL` variable, or as a `FUNCTIONAL` argument of a function. The syntax to create a functional is `<type> FUNCTION <parameters> <;|> (<expression>; <functional-arguments>)`, where the `<functional-arguments>` are variables used in the `<expression>` which must be evaluated at the time the functional argument is set up. 
 ```
-SPECIAL a;
+SYMBOL a;
 
-FUN mapcar l f;
-   IF NULL l THEN nil
-      ELSE f(CAR l) . mapcar(CDR l, f);
+SYMBOL PROCEDURE mapcar(l, f);
+   SYMBOL FUNCTIONAL f(SYMBOL);
+   IF null(l) THEN nil
+      ELSE cons(f(car(l)), mapcar(cdr(l), f));
 
-FUN mapcons l a;
-   mapcar(l, FUN k; (k . a; a));
+SYMBOL PROCEDURE mapcons(l, a);
+   mapcar(l, SYMBOL FUNCTION(k); (cons(k, a); a))
 
-LAMBDA a; mapcons('(1 2), 'x); (y)
+a := 'y;
+mapcons('(1 2), 'x);
 ```
 
 Here, the functional argument uses the value of `a` bound in `mapcons`, so the result is `'((1 . x) (2 . x))`. Translate to s-expressions:
 ```
-'SPECIAL' ((A))
+('SYMBOL' A)
 
-'DEFINE' ((
-(('FUNCTION' MAPCAR)
-   ('LAMBDA' (L F)
-      ('IF' ('NULL' L) 'THEN' NIL
-         'ELSE' ('CONS' (F ('CAR' L)) (MAPCAR ('CDR' L) F)))))
-(('FUNCTION' MAPCONS)
-   ('LAMBDA' (L A)
-      (MAPCAR L ('FUNCTION' (K) ('CONS' K A) (A)))))
-))
+('SYMBOL' 'PROCEDURE' MAPCAR (L F)
+   ('SYMBOL' 'FUNCTIONAL' F (SYMBOL))
+   ('IF' ('NULL' L) 'THEN' NIL
+      'ELSE' ('CONS' (F ('CAR' L)) (MAPCAR ('CDR' L) F))))
+   
+('SYMBOL' 'PROCEDURE' MAPCONS (L A)
+   (MAPCAR L ('SYMBOL' 'FUNCTION' (K) (CONS K A) (A))))
 
-('LAMBDA' (A) (MAPCONS ('QUOTE' (1 2)) ('QUOTE' X))) (Y)
+('SETQ' A ('QUOTE' Y))
+(MAPCONS ('QUOTE' (1 2)) ('QUOTE' X))
 ```
 
 
 ## Example
 ```
-TYPE RECT = STRUCT (width OF INT, length OF INT);
-TYPE CIRCLE = STRUCT (radius OF INT);
-TYPE SHAPE = UNION (rectshape OF RECT, circleshape OF CIRCLE);
+DEFINE TYPE 'GET AREA' = REAL FUNCTIONAL(ANY SHAPE REFERENCE);
+DEFINE TYPE SHAPE = STRUCTURE ('GET AREA' get area)
+DEFINE TYPE RECT = SHAPE STRUCTURE (INTEGER width, length);
+DEFINE TYPE CIRCLE = SHAPE STRUCTURE (INTEGER radius);
 
-FUN areaofrect r;
-   length OF r * width OF r;
-   
-FUN areaofcircle c;
-   radius OF c * radius OF c * 3.14;
+REAL PROCEDURE area of rect(s);
+   ANY SHAPE REFERENCE s;
+BEGIN RECT REFERENCE r;
+   r := s;
+   RETURN length OF r * width OF r
+END area of rect;
 
-FUN areaofshape s;
-   REF SHAPE s; TYPE INT;
-PROG;
-   IF NULL s THEN ERROR "BAD SHAPE";
-   RETURN SELECT TYPE OF s CASE
-      1: areaofrect(rectshape OF s)
-      2: areaofcircle(s) ELSE ERROR "BAD SHAPE"
-END areaofshape;
+REAL PROCEDURE area of circle(s);
+   ANY SHAPE REFERENCE s;
+BEGIN INTEGER r;
+   r := radius OF CIRCLE REFERENCE (s);
+   RETURN r * r * 3.14
+END area of circle;
 
-FUN largest ss;
-   FLEX [0:] SHAPE ss; TYPE INT;
-PROG i u m;
-   INT i u m;
-   u := UPB ss; m := 0;
-   FOR i := 0 STEP 1 UNTIL u DO
-      IF m < areaofshape(ss[i])
-         THEN m := areaofshape(ss[i]);
-   RETURN m
-END largest;
+REAL PROCEDURE area of shape(ANY SHAPE REFERENCE s)
+   := (get area OF s)(s);
 
-LAMBDA;
-   TYPE VOID;
-PROG ss;
-   REF [0:3] SHAPE ss;
-   ss := HEAP [0:3] SHAPE; 
-   ss[0] := RECT ('(9 9));
-   ss[1] := RECT ('(10 8));
-   ss[2] := CIRCLE ('(10));
-   PRINT largest(ss)
-END; ()
+PROCEDURE;
+BEGIN
+   RECT r; CIRCLE c;
+   r := <RECT <PROCEDURE area of rect>, 3, 3>;
+   c := <CIRCLE <PROCEDURE area of circle>, 1.5>;
+   out integer(max(area of shape(r), area of shape(c)))
+END ()
 ```
 
 Translate to s-expressions:
 ```
-'DEFINE' ((
-(('TYPE' 'RECT') ('STRUCTURE' ((LENGTH ('INTEGER')) (WIDTH ('INTEGER')))))
-(('TYPE' 'CIRCLE') ('STRUCTURE' ((RADIUS ('INTEGER')))))
-(('TYPE' 'SHAPE') ('UNION' ((RECTSHAPE ('RECT')) (CIRCLESHAPE ('CIRCLE')))))
-))
+('DEFINE' 'TYPE' 'GETAREA'
+   ('REAL' 'FUNCTIONAL' ('ANY' 'SHAPE' 'REFERENCE')))
+('DEFINE' 'TYPE' 'SHAPE'
+   ('STRUCTURE' ('GETAREA' GETAREA)))
+('DEFINE' 'TYPE' 'RECT'
+   ('SHAPE' 'STRUCTURE' (('INTEGER' WIDTH LENGTH))))
+('DEFINE' 'TYPE' 'CIRCLE'
+   ('SHAPE' 'STRUCTURE' (('INTEGER' RADIUS))))
 
-'DEFINE' ((
-(('FUNCTION' AREAOFRECT)
-   ('LAMBDA' (R)
-      ('TIMES' ('OF' LENGTH R) ('OF' WIDTH R))))
-(('FUNCTION' AREAOFCIRCLE)
-   ('LAMBDA' (C)
-      ('TIMES' ('OF' RADIUS C) ('OF' RADIUS C) 3.14)))
-(('FUNCTION' AREAOFSHAPE)
-   ('LAMBDA' (S)
-         ('SHAPE' (S)) ('TYPE' 'INTEGER')
-      ('PROG' ()
-         ('IF' ('NULL' S) 'THEN' ('ERROR' "BAD SHAPE"))
-         ('RETURN' ('SELECT' ('OF' 'TYPE' S)
-            (1 (AREAOFRECT ('OF' RECTSHAPE S)))
-            (2 (AREAOFCIRCLE S)) ('ERROR' "BAD SHAPE"))))))
-(('FUNCTION' LARGEST)
-   ('LAMBDA' (SS N)
-         ('FLEXIBLE' ((0)) 'SHAPE' (SS)) ('TYPE' 'INTEGER')
-      ('PROG' (I U M)
-         ('INTEGER' (I U M))
-	 ('SETQ' U ('UPPERBOUND' SS)) ('SETQ' M 0)
-         ('FOR' I 0 1 U
-	    ('IF' ('LESSP' M (AREAOFSHAPE (SS I)))
-	        'THEN' ('SETQ' M (AREAOFSHAPE (SS I)))))
-	 ('RETURN' M))))
-))
+('REAL' 'PROCEDURE' AREAOFRECT (S)
+      ('ANY' 'SHAPE' 'REFERENCE' S)
+   ('BEGIN' ('RECT' 'REFERENCE' R)
+      ('SETQ' R S)
+      ('RETURN' ('TIMES' ('OF' LENGTH R) ('OF' WIDTH R)))))
 
-('LAMBDA' ()
-      ('TYPE' 'VOID')
-   ('PROG' (SS)
-      ('REFERENCE' 'ARRAY' ((0 3)) 'SHAPE' (SS))
-      ('SETQ' SS ('HEAP' ('ARRAY' ((0 3)) 'SHAPE')))
-      ('SETQ' (SS 0) ('CAST' ('RECT') (QUOTE (9 9))))
-      ('SETQ' (SS 1) ('CAST' ('RECT') (QUOTE (10 8))))
-      ('SETQ' (SS 2) ('CAST' ('CIRCLE') (QUOTE (10))))
-      ('PRINT' (LARGEST SS)))) ()
+('REAL' 'PROCEDURE' AREAOFCIRCLE (S)
+      ('ANY' 'SHAPE' 'REFERENCE' S)
+   ('BEGIN' ('INTEGER' R)
+      ('SETQ' R ('OF' RADIUS ('CAST' ('CIRCLE' 'REFERENCE') S)))
+      ('RETURN' ('TIMES' R R 3.14))))
+
+('REAL' 'PROCECURE' AREAOFSHAPE (('ANY' 'SHAPE' 'REFERENCE' S))
+   (('OF' GETAREA S) S))
+
+(('PROCEDURE'
+   ('BEGIN' ('RECT' R) ('CIRCLE' C)
+      ('SETQ' R <'RECT' <'PROCEDURE' AREAOFRECT> 3 3>)
+      ('SETQ' C <'CIRCLE' <'PROCEDURE' AREAOFCIRCLE> 1.5>)
+      (OUTINTEGER (MAX (AREAOFSHAPE R) (AREAOFSHAPE C))))))
 ```
 
 
